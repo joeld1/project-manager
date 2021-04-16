@@ -1,4 +1,4 @@
-from conda_env_manager import __version__
+from project_manager.conda_env_manager import __version__
 
 
 def test_version():
