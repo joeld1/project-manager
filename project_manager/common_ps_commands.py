@@ -5,7 +5,7 @@ from pathlib import Path
 def run_command(cmd_args, *args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=None, return_process=False,
                 **kwargs):
     if isinstance(cmd_args,str):
-        cmd_args = list(cmd_args)
+        cmd_args = [cmd_args]
     p = subprocess.Popen(cmd_args, *args, stdin=stdin, stdout=stdout, text=text, **kwargs)
     if return_process:
         return p
