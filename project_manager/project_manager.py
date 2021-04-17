@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 try:
     import stringcase
@@ -15,21 +16,22 @@ except Exception as e:
 class ProjectManager:
 
     @staticmethod
-    def create_proj_name(name):
+    def create_proj_name(name:str)->str:
+        """
+
+        This reformats names such that they are in snake case
+
+        :param str: name:
+        :return:
+        """
         clean_proj_name = stringcase.snakecase(name)
         return clean_proj_name
 
     @staticmethod
     def find_env_and_add_dependency(file_importing_from: str, dependency: str):
-        old_path = os.getcwd()
-        poetry_proj_dir = PoetryProjectManager.get_poetry_project_dir(file_importing_from)
-        env_name = PoetryProjectManager.get_poetry_project_env_name(file_importing_from)
-        os.chdir(poetry_proj_dir)
-        act_env_str = CondaEnvManager.activate_conda_env(env_name, return_cmd=True)
-        poetry_cmd = f"poetry add {dependency}"
-        rc = CommonPSCommands.chain_and_execute_commands([act_env_str, poetry_cmd], text=True, shell=True,
-                                                         cwd=poetry_proj_dir)
-        os.chdir(old_path)
+        dir_containing_pyproject_toml = PoetryProjectManager.get_poetry_project_dir(file_importing_from)
+        poetry_proj_conda_env_name = PoetryProjectManager.get_poetry_proj_env_name_from_poetry_toml_for_py_file(file_importing_from)  # gets env from poetry.toml
+        rc = PoetryProjectManager.add_dependency_to_pyproject_toml(dir_containing_pyproject_toml, poetry_proj_conda_env_name, dependency)
         return rc
 
     @staticmethod
@@ -54,35 +56,70 @@ class ProjectManager:
 
 
 class PoetryProjectManager:
+
     @staticmethod
-    def get_poetry_project_dir(filepath_importing_from, toml_pattern="*pyproject.toml"):
+    def search_for_toml_files(filepath:str, toml_pattern:str):
+        dir_containing_toml = Path(filepath)
+        if dir_containing_toml.is_file():
+            dir_containing_toml = dir_containing_toml.parent
+        toml_paths = list(dir_containing_toml.glob(toml_pattern))
+        return dir_containing_toml, toml_paths
+
+    @staticmethod
+    def get_poetry_project_dir(filepath_importing_from:str, toml_pattern="*pyproject.toml"):
+        """
+        This recursively finds a pyproject.toml from a given filepath.
+
+        If the filepath is a file it'll look at sibling files for a toml file, if it's a director it'll look within
+        its contents for a pyproject.toml file. If nothing is found, it'll go up 1 folder and restart the search and
+        repeat the process until a toml pattern is found
+
+        :param filepath_importing_from:
+        :param toml_pattern:
+        :return:
+        """
         # TODO: Find out how to determine if is poetry proj, or regular python proj (i.e. requirements.txt)
-        path = Path(filepath_importing_from)
-        if path.is_file():
-            path = path.parent
-        pyproject_toml_path = list(path.glob(toml_pattern))
-        if not pyproject_toml_path:
+        path, toml_paths = PoetryProjectManager.search_for_toml_files(filepath_importing_from, toml_pattern)
+        if not toml_paths:
             return PoetryProjectManager.get_poetry_project_dir(path.parent.as_posix())
         else:
             return path.as_posix()
 
+
     @staticmethod
-    def get_poetry_toml(path):
+    def get_poetry_toml(path:str):
+        """
+        This searches for a poetry.toml file that is a sibling of the given path. It recursively searches parent
+        paths for a parent that contains a poetry.toml file.
+        :param path:
+        :return:
+        """
         toml_pattern = "*poetry.toml"
         poetry_proj_dir = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
         cur_poetry_file = Path(poetry_proj_dir) / toml_pattern.replace("*", "")
         return cur_poetry_file
 
     @staticmethod
-    def get_pyproject_toml(path):
+    def get_pyproject_toml(path:str):
+        """
+        This searches for a pypoetry.toml file that is a sibling of the given path. It recursively searches parent
+        paths for a parent that contains a poetry.toml file.
+        :param path:
+        :return:
+        """
         toml_pattern = "pypoetry.toml"
         dir_containing_pyproject_toml = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
         path_to_toml = Path(dir_containing_pyproject_toml) / toml_pattern
         return path_to_toml
 
     @staticmethod
-    def get_poetry_module_dependencies(path: str):
-        path_to_toml = PoetryProjectManager.get_pyproject_toml(path)
+    def get_poetry_module_dependencies(poetry_proj_py_filepath: str):
+        """
+        Finds gets the poetry.dependencies (in pyproject.toml) that a py file in a poetry project is associated with
+        :param poetry_proj_py_filepath:
+        :return:
+        """
+        path_to_toml = PoetryProjectManager.get_pyproject_toml(poetry_proj_py_filepath)
         dependencies = CommonPSCommands.read_toml(path_to_toml, 'tool.poetry.dependencies')
         return dependencies
 
@@ -100,52 +137,66 @@ class PoetryProjectManager:
         break_stmnt = input(f"poetry add {dependency}? [q to break]")
         if break_stmnt.lower() == "q":
             return
-        old_path = os.getcwd()
-        poetry_proj_dir = PoetryProjectManager.get_poetry_project_dir(file_importing_from)
-        env_name = PoetryProjectManager.get_poetry_project_env_name(file_importing_from)
-        os.chdir(poetry_proj_dir)
-        act_env_str = CondaEnvManager.activate_conda_env(env_name, return_cmd=True)
-        poetry_cmd = f"poetry add {dependency}"
-        rc = CommonPSCommands.chain_and_execute_commands([act_env_str, poetry_cmd], text=True, shell=True,
-                                                         cwd=poetry_proj_dir)
-        os.chdir(old_path)
+        env_name = PoetryProjectManager.get_poetry_proj_env_name_from_poetry_toml_for_py_file(file_importing_from)
+        rc = PoetryProjectManager.add_poetry_package(file_importing_from, env_name, dependency)
         return rc
 
     @staticmethod
     def add_poetry_package(file_importing_from: str, env_name: str, dependency: str):
-        old_path = os.getcwd()
         poetry_proj_dir = PoetryProjectManager.get_poetry_project_dir(file_importing_from)
-        os.chdir(poetry_proj_dir)
+        rc = PoetryProjectManager.add_dependency_to_pyproject_toml(poetry_proj_dir, env_name, dependency)
+        return rc
 
-        act_env_str = CondaEnvManager.activate_conda_env(env_name, return_cmd=True)
+    @staticmethod
+    def add_dependency_to_pyproject_toml(dir_containing_pyproject_toml:str, poetry_proj_conda_env_name:str, dependency:str):
         poetry_cmd = f"poetry add {dependency}"
-        rc = CommonPSCommands.chain_and_execute_commands([act_env_str, poetry_cmd], text=True, shell=True,
-                                                         cwd=poetry_proj_dir)
+        rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, dir_containing_pyproject_toml, poetry_proj_conda_env_name)
+        return rc
+
+    @staticmethod
+    def execute_poetry_cmd(poetry_cmd:str, poetry_proj_dir, env_name,**kwargs):
+        old_path = os.getcwd()
+        os.chdir(poetry_proj_dir)
+        act_env_str = CondaEnvManager.activate_conda_env(env_name, return_cmd=True)
+        kwargs['text'] = True
+        kwargs['shell'] = True
+        kwargs['cwd'] = poetry_proj_dir
+        rc = CommonPSCommands.chain_and_execute_commands([act_env_str, poetry_cmd], **kwargs)
         os.chdir(old_path)
         return rc
 
     @staticmethod
-    def link_poetry_proj_with_conda_env(clean_env_name, *args, **kwargs):
+    def execute_poetry_init(env_name: str, poetry_proj_dir: str = None):
+        if poetry_proj_dir is None:
+            poetry_proj_dir = Path(".").resolve().as_posix()
+        poetry_cmd = "poetry init --no-interaction"
+        rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, poetry_proj_dir, env_name)
+        return rc
+
+    @staticmethod
+    def get_poetry_config_virtualenv_path_cmd_for_conda_env(clean_env_name):
         conda_env_path = CondaEnvManager.get_path_to_conda_env(clean_env_name)
-        act_env_str = CondaEnvManager.activate_conda_env(clean_env_name, return_cmd=True)
         poetry_cmd = f"poetry config virtualenvs.path {conda_env_path} --local"
-        rc = CommonPSCommands.chain_and_execute_commands([act_env_str, poetry_cmd], *args, text=True, shell=True,
-                                                         cwd=os.getcwd(), **kwargs)
+        return poetry_cmd
+
+    @staticmethod
+    def link_poetry_proj_with_conda_env(clean_env_name,**kwargs):
+        poetry_cmd = PoetryProjectManager.get_poetry_config_virtualenv_path_cmd_for_conda_env(clean_env_name)
+        rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd,poetry_proj_dir=os.getcwd(),env_name=clean_env_name, **kwargs)
 
         poetry_cmd = "poetry config virtualenvs.create 0 --local"
-        rc = CommonPSCommands.chain_and_execute_commands([act_env_str, poetry_cmd], *args, text=True, shell=True,
-                                                         cwd=os.getcwd(), **kwargs)
+        rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd,poetry_proj_dir=os.getcwd(),env_name=clean_env_name, **kwargs)
 
         poetry_cmd = "poetry config virtualenvs.in-project 0 --local"
-        rc = CommonPSCommands.chain_and_execute_commands([act_env_str, poetry_cmd], *args, text=True, shell=True,
-                                                         cwd=os.getcwd(), **kwargs)
+        rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd,poetry_proj_dir=os.getcwd(),env_name=clean_env_name, **kwargs)
 
         assert rc == 0
         print(f"Successfully linked {clean_env_name} to its conda env!")
         return rc
 
+
     @staticmethod
-    def create_poetry_proj(clean_env_name, *args, proj_name=None, proj_dir=".", **kwargs):
+    def create_poetry_proj(clean_env_name, proj_name=None, proj_dir=".", **kwargs):
         old_path = os.getcwd()
         proj_path = Path(proj_dir).expanduser().resolve()
         try:
@@ -155,8 +206,6 @@ class PoetryProjectManager:
             print("Unable to cd into folder since it doesn't exist! Will create proj in current directory")
             os.chdir(old_path)
         try:
-            conda_envs_and_kernels_made = not CondaEnvManager.conda_and_kernel_name_available(clean_env_name, both=True)
-
             if proj_name:
                 path_to_proj = (proj_path / proj_name)
                 assert not path_to_proj.exists()
@@ -165,25 +214,34 @@ class PoetryProjectManager:
         except Exception as e:
             print("Unable to create poetry project since directory or environment already exists!")
             return -1, Path("..")
-        try:
-            assert conda_envs_and_kernels_made
-            act_env_str = CondaEnvManager.activate_conda_env(clean_env_name, return_cmd=True)
-        except Exception as e:
-            print(e)
-            print("Create the conda environment and register the jupyter kernel before retrying this method!")
-            return -1, Path("..")
 
-        if proj_name:
-            cmd = f"poetry new {proj_name}"
-        else:
-            cmd = f"poetry new {clean_env_name}"
-        rc = CommonPSCommands.chain_and_execute_commands([act_env_str, cmd], *args, text=True, shell=True,
-                                                         cwd=os.getcwd(), **kwargs)
+        rc = PoetryProjectManager.create_poetry_project(clean_env_name, proj_name, **kwargs)
         assert rc == 0
         rc = PoetryProjectManager.link_poetry_proj_with_conda_env(clean_env_name)
         assert rc == 0
         os.chdir(old_path)
         return rc, path_to_proj
+
+    @staticmethod
+    def create_poetry_project(clean_env_name, proj_name,**kwargs):
+        if proj_name:
+            poetry_cmd = f"poetry new {proj_name}"
+        else:
+            poetry_cmd = f"poetry new {clean_env_name}"
+        rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, poetry_proj_dir=os.getcwd(), env_name=clean_env_name, **kwargs)
+        return rc
+
+    @staticmethod
+    def get_conda_activate_str(clean_env_name):
+        try:
+            conda_envs_and_kernels_made = not CondaEnvManager.conda_and_kernel_name_available(clean_env_name, both=True)
+            assert conda_envs_and_kernels_made
+            act_env_str = CondaEnvManager.activate_conda_env(clean_env_name, return_cmd=True)
+        except Exception as e:
+            print(e)
+            print("Create the conda environment and register the jupyter kernel before retrying this method!")
+            raise e
+        return act_env_str
 
     @staticmethod
     def init_poetry_project(clean_env_name, proj_name=None, proj_dir=".", python_version="3.9"):
@@ -195,10 +253,7 @@ class PoetryProjectManager:
         proj_available = CondaEnvManager.conda_and_kernel_name_available(clean_env_name, both=True)
         if proj_available:
             print("it's available! Now making conda env!")
-            rc = CondaEnvManager.create_conda_env(clean_env_name, python_version)
-            assert rc == 0
-            rc = CondaEnvManager.init_prev_made_conda_env(clean_env_name)
-            assert rc == 0
+            CondaEnvManager.create_and_init_conda_env(clean_env_name, python_version)
             # make conda env before this step
             rc, path_to_proj = PoetryProjectManager.create_poetry_proj(clean_env_name, proj_name=proj_name,
                                                                        proj_dir=proj_dir_path)
@@ -212,15 +267,32 @@ class PoetryProjectManager:
             print("Project is not available!")
 
     @staticmethod
-    def get_poetry_virtual_env_path(path):
+    def find_poetry_toml_and_get_virtual_env_path(path:str):
         cur_poetry_file = PoetryProjectManager.get_poetry_toml(path)
+        path_to_env = PoetryProjectManager.get_virtualenv_path_from_poetry_toml(cur_poetry_file)
+        return path_to_env
+
+    @staticmethod
+    def get_virtualenv_path_from_poetry_toml(cur_poetry_file:str)->Path:
+        """
+        This reads a poetry.toml file and gets the virtualenv path found in the poetry.toml file
+
+        :param cur_poetry_file:
+        :return:
+        """
         virtualenvs_path = CommonPSCommands.read_toml(cur_poetry_file, 'virtualenv')
         path_to_env = Path(virtualenvs_path['path'])
         return path_to_env
 
     @staticmethod
-    def get_poetry_project_env_name(file_importing_from):
-        path_to_env = PoetryProjectManager.get_poetry_virtual_env_path(file_importing_from)
+    def get_poetry_proj_env_name_from_poetry_toml_for_py_file(poetry_proj_py_filepath:str):
+        """
+        This searches for the poetry.toml file a .py file (in a poetry proj) is associated with.
+
+        :param poetry_proj_py_filepath:
+        :return:
+        """
+        path_to_env = PoetryProjectManager.find_poetry_toml_and_get_virtual_env_path(poetry_proj_py_filepath)
         env_name = path_to_env.name
         return env_name
 
@@ -274,7 +346,7 @@ class CommonPSCommands:
 
     @staticmethod
     def get_python_dirs():
-        p = Path("../..")
+        p = Path(".")
         current_files = list(p.iterdir())
         all_python_dirs = list(
             filter(lambda x: x.is_dir() and ("." not in str(x)) and (not str(x).startswith("__")), current_files))
@@ -287,6 +359,14 @@ class CommonPSCommands:
 
     @staticmethod
     def read_toml(path_to_toml, start_line="tool.poetry.dependencies"):
+        """
+        Reads for toml file using open context manager in order to reduce 3rd party toml parser deps
+
+        :param path_to_toml:
+        :param start_line:
+        :return:
+        """
+        # TODO: This might not work if a dependency spans multiple lines
         toml_dict = {}
         save_lines = False
         with open(path_to_toml, "r") as f:
@@ -308,6 +388,7 @@ class CommonPSCommands:
 
     @staticmethod
     def echo_yes(return_cmd=False):
+        # TODO: Refactor for different platforms
         #     cur_os = platform.system()
         #     if cur_os == "Darwin":
 
@@ -411,10 +492,9 @@ class CondaEnvManager:
 
     @staticmethod
     def create_conda_env(env_name, python_version):
-        python_version_str = f"python={python_version}"
         p0 = CommonPSCommands.echo_yes(return_cmd=False)
-
-        args = ["conda", "create", "-n", env_name, f"python={python_version}"]
+        python_version_str = f"python={python_version}"
+        args = ["conda", "create", "-n", env_name, python_version_str]
         rc = CommonPSCommands.run_command(args, stdin=p0.stdout, text=True)
         return rc
 
@@ -492,6 +572,7 @@ class CondaEnvManager:
 
     @staticmethod
     def get_conda_sh():
+        # TODO: Make this work on all platforms
         conda_base = CondaEnvManager.get_conda_base()
         conda_sh = (Path(conda_base.strip()) / "etc/profile.d/conda.sh").resolve().as_posix()
         return conda_sh
@@ -516,6 +597,13 @@ class CondaEnvManager:
         p = subprocess.Popen(conda_act_test_str, stdout=subprocess.PIPE, stdin=subprocess.PIPE, text=True,
                              cwd=Path(conda_sh).parent, shell=True)
         return p
+
+    @staticmethod
+    def create_and_init_conda_env(clean_env_name, python_version):
+        rc = CondaEnvManager.create_conda_env(clean_env_name, python_version)
+        assert rc == 0
+        rc = CondaEnvManager.init_prev_made_conda_env(clean_env_name)
+        assert rc == 0
 
 
 class GitProjectManager:
@@ -545,8 +633,12 @@ class GitProjectManager:
 
 if __name__ == "__main__":
     env_name = "docker_sandbox"
+    python_version = "3.9"
     clean_env_name = ProjectManager.create_proj_name(env_name)
-    rc = PoetryProjectManager.init_poetry_project(clean_env_name, proj_dir="..", python_version="3.9")
+    CondaEnvManager.create_and_init_conda_env(clean_env_name, python_version)
+    rc, path_to_proj = PoetryProjectManager.create_poetry_proj(clean_env_name, proj_name=env_name,proj_dir=os.getcwd())
+    assert rc == 0
+    rc = PoetryProjectManager.init_poetry_project(clean_env_name, proj_dir=".", python_version="3.9")
     assert rc == 0
     print(rc)
     sys.exit()
