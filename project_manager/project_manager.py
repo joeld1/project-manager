@@ -592,6 +592,7 @@ class CondaEnvManager:
         # TODO: Make this work on all platforms
         echo_cmds = ['conda', 'info', '--base']
         if platform.system() == "Windows":
+            # TODO: This always prints out for windows commands
             rc, text = CommonPSCommands.run_command(echo_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, collect_stripped_text=True)
             output = text[0].strip() # TODO: last elem is a new line str for some reason
         else:
