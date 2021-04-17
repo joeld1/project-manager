@@ -1,6 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
+import platform
 
 try:
     import stringcase
@@ -325,12 +326,18 @@ class CommonPSCommands:
 
     @staticmethod
     def run_command(cmd_args, *args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=None, return_process=False,
-                    **kwargs):
+                    collect_stripped_text=False, **kwargs):
         if isinstance(cmd_args, str):
-            cmd_args = [cmd_args]
+            if "&&" in cmd_args:
+                cmd_args = cmd_args.split()
+            else:
+                cmd_args = [cmd_args]
+        if collect_stripped_text:
+            return_process = False
         p = subprocess.Popen(cmd_args, *args, stdin=stdin, stdout=stdout, text=text, **kwargs)
         if return_process:
             return p
+        text_collected = [] # TODO: Find out built-ins on polling and collecting this output
         while True:
             cur_status = p.poll()
             if cur_status:  # 0s won't be printed
@@ -339,11 +346,16 @@ class CommonPSCommands:
             if (output == '') and p.poll() is not None:  # might be redundant
                 break
             if output:
-                print(output.strip())
+                cur_text = output.strip()
+                if collect_stripped_text:
+                    text_collected.append(cur_text)
+                print(cur_text)
             if cur_status == 0:
                 print(f"Success!\nFinished running {cmd_args}")
                 break
         rc = p.poll()
+        if collect_stripped_text:
+            return rc, text_collected
         return rc
 
     @staticmethod
@@ -405,7 +417,10 @@ class CommonPSCommands:
         y_cmd = "yes"
         if return_cmd:
             return f"echo {y_cmd} | "
-        p1 = subprocess.Popen(["echo", y_cmd], stdout=subprocess.PIPE, text=True)
+        use_shell = False
+        if platform.system() == "Windows":
+            use_shell = True
+        p1 = subprocess.Popen(["echo", y_cmd], stdout=subprocess.PIPE, text=True, shell=use_shell)
         return p1
 
 
@@ -574,15 +589,19 @@ class CondaEnvManager:
 
     @staticmethod
     def get_conda_base():
+        # TODO: Make this work on all platforms
         echo_cmds = ['conda', 'info', '--base']
-        p = CommonPSCommands.run_command(echo_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
-                                         return_process=True)
-        output, errors = p.communicate()
+        if platform.system() == "Windows":
+            rc, text = CommonPSCommands.run_command(echo_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, collect_stripped_text=True)
+            output = text[0].strip() # TODO: last elem is a new line str for some reason
+        else:
+            p = CommonPSCommands.run_command(echo_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+                                             return_process=True)
+            output, errors = p.communicate()
         return output.strip()
 
     @staticmethod
     def get_conda_sh():
-        # TODO: Make this work on all platforms
         conda_base = CondaEnvManager.get_conda_base()
         conda_sh = (Path(conda_base.strip()) / "etc/profile.d/conda.sh").resolve().as_posix()
         return conda_sh
@@ -603,10 +622,17 @@ class CondaEnvManager:
         conda_act_test = source_conda + ["&&"] + conda_act
         conda_act_test_str = " ".join(conda_act_test)
         if return_cmd:
-            return conda_act_test_str
-        p = subprocess.Popen(conda_act_test_str, stdout=subprocess.PIPE, stdin=subprocess.PIPE, text=True,
-                             cwd=Path(conda_sh).parent, shell=True)
-        return p
+            if platform.system() == "Windows":
+                # shell scripts aren't runnable on windows, so just return the activate str
+                return conda_act_str
+            else:
+                return conda_act_test_str
+        else:
+            if platform.system() == "Windows":
+                conda_act_test_str = conda_act_str
+            p = subprocess.Popen(conda_act_test_str, stdout=subprocess.PIPE, stdin=subprocess.PIPE, text=True,
+                                 cwd=Path(conda_sh).parent, shell=True)
+            return p
 
     @staticmethod
     def create_and_init_conda_env(clean_env_name, python_version):
@@ -650,7 +676,7 @@ class GitProjectManager:
 class LocalProjectManager:
 
     @staticmethod
-    def init_curent_dir_as_a_poetry_conda_project(clean_env_name="testing_project_manager", python_version="3.9",
+    def init_curent_dir_as_a_poetry_conda_project(clean_env_name="hello_world", python_version="3.9",
                                                   add_git=False):
         CondaEnvManager.create_and_init_conda_env(clean_env_name, python_version)
         PoetryProjectManager.execute_poetry_init(clean_env_name)
@@ -666,6 +692,6 @@ class LocalProjectManager:
 
 
 if __name__ == "__main__":
-    env_name = "docker_sandbox"
+    env_name = "hello_world"
     python_version = "3.9"
     rc = LocalProjectManager.init_curent_dir_as_a_poetry_conda_project(env_name, python_version)
