@@ -161,7 +161,7 @@ Running the following command, creates a Python 3.9 conda env, registers the jup
     env_name = "hello_world"
     python_version = "3.9"
     
-    LPM.init_curent_dir_as_a_poetry_conda_project(env_name, python_version)
+    LPM.init_current_dir_as_a_poetry_conda_project(env_name, python_version)
 
     sys.exit()
 

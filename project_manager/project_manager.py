@@ -731,8 +731,8 @@ class GitProjectManager:
 class LocalProjectManager:
 
     @staticmethod
-    def init_curent_dir_as_a_poetry_conda_project(clean_env_name="hello_world", python_version:str="3.9",
-                                                  add_git=False):
+    def init_current_dir_as_a_poetry_conda_project(clean_env_name="hello_world", python_version:str= "3.9",
+                                                   add_git=False):
         """
 
         :param str clean_env_name: A name for your conda env without illegal characterss
@@ -794,5 +794,5 @@ class SublimeBuildConfigGenerator:
 if __name__ == "__main__":
     env_name = "hello_world"
     python_version = "3.9"
-    rc = LocalProjectManager.init_curent_dir_as_a_poetry_conda_project(env_name, python_version)
+    rc = LocalProjectManager.init_current_dir_as_a_poetry_conda_project(env_name, python_version)
     sys.exit()
