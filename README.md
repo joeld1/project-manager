@@ -11,15 +11,15 @@ This package was created in order to practice replacing shell/.bat scripts with 
 For some methods found in this module to work you need to have the following:
 
 - Required
-    - Conda
-    - Poetry
+    - [Anaconda/Conda](https://github.com/conda/conda)
+    - [Poetry](https://github.com/python-poetry/poetry)
 
 - Optional
-    - gy
+    - [gy](https://github.com/cls1991/gy)
         - Used for creating `.gitignore` files
-    - stringcase
+    - [stringcase](https://github.com/okunishinishi/python-stringcase)
         - used to convert text to snake_case
-    - toml
+    - [toml](https://github.com/uiri/toml)
         - as a backup for parsing `.toml` files
     
 ## Note 
@@ -55,6 +55,7 @@ import sys
 from project_manager import PoetryProjectManager as PPM
 
 # Don't add illegal characters or spaces
+# the poetry project will be the same python version as the conda env specified
 conda_env_name = "hello_world"
 
 # you can specify a directory or leave it as None for current directory
@@ -64,6 +65,7 @@ PPM.execute_poetry_init(conda_env_name,poetry_proj_dir)
 
 sys.exit()
 ```
+
 Catch a `ModuleNotFoundError` and add missing module to `pypoetry.toml`
 ---
 The following lines of code can help you add a missing module to your `pyproject.toml` file. This only works if the py script you are running is already part of a poetry project folder, and if a `poetry.toml` file is located in the directory of any parents of the .py file containing the below block of code. If a `pyproject.toml` isn't found in any parents it'll fail. 
@@ -109,7 +111,7 @@ assert rc == 0
 
 sys.exit()
 ```
-Uninstall a jupyter kernel and conda env
+Uninstall a jupyter kernel and conda env in 1 go (different names too)
 --- 
 
 ```python
