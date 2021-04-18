@@ -176,8 +176,8 @@ import sys
 
 from project_manager import LocalProjectManager as LPM
 
-env_name = r"hello_world"
-python_version = r"3.9"
+env_name = "hello_world"
+python_version = "3.9"
 
 LPM.init_current_dir_as_a_poetry_conda_project(env_name, python_version)
 
@@ -193,7 +193,7 @@ import sys
 
 from project_manager import SublimeBuildConfigGenerator as SBCG
 
-path_to_python_bin = "/opt/homebrew/anaconda3/envs/hello_world/bin"
+path_to_python_bin = r"/opt/homebrew/anaconda3/envs/hello_world/bin"
 build_config_name = "hello_world" 
 
 SBCG.export_sublime_text_build_config(path_to_python_bin, build_config_name)
