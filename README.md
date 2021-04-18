@@ -22,7 +22,7 @@ For some methods found in this module to work you need to have the following:
     - toml
         - as a backup for parsing `.toml` files
     
-##Note 
+## Note 
 Some method names might undergo name changes as documentation is added.  
 
 # Examples
