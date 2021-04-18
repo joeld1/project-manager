@@ -731,7 +731,7 @@ class GitProjectManager:
 class LocalProjectManager:
 
     @staticmethod
-    def init_current_dir_as_a_poetry_conda_project(clean_env_name="hello_world", python_version:str= "3.9",
+    def init_current_dir_as_a_poetry_conda_project(clean_env_name:str="hello_world", python_version:str= "3.9",
                                                    add_git=False):
         """
 

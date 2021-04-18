@@ -30,123 +30,140 @@ Create a Conda Environment and Register Kernel
 ---
 Running the following command:
 
-    
-    import sys
+```python
+import sys
 
-    from project_manager import CondaEnvManager as CEM
-    
-    # Don't add illegal characters or spaces
-    conda_env_name = "hello_world" 
-    
-    # Version of python for conda env
-    python_version = "3.9"
-    
-    CEM.create_and_init_conda_env(conda_env_name, python_version)
+from project_manager import CondaEnvManager as CEM
 
-    sys.exit()
+# Don't add illegal characters or spaces
+conda_env_name = "hello_world" 
 
+# Version of python for conda env
+python_version = "3.9"
+
+CEM.create_and_init_conda_env(conda_env_name, python_version)
+
+sys.exit()
+```
 Execute `poetry init --no-interaction` 
 ---
 Running the following command activates a conda env and runs `poetry init --no-interaction`:
 
-    
-    import sys
+```python    
+import sys
 
-    from project_manager import PoetryProjectManager as PPM
-    
-    # Don't add illegal characters or spaces
-    conda_env_name = "hello_world"
+from project_manager import PoetryProjectManager as PPM
 
-    # you can specify a directory or leave it as None for current directory
-    poetry_proj_dir = None
+# Don't add illegal characters or spaces
+conda_env_name = "hello_world"
 
-    PPM.execute_poetry_init(conda_env_name,poetry_proj_dir)
+# you can specify a directory or leave it as None for current directory
+poetry_proj_dir = None
 
-    sys.exit()
+PPM.execute_poetry_init(conda_env_name,poetry_proj_dir)
 
+sys.exit()
+```
 Catch a `ModuleNotFoundError` and add missing module to `pypoetry.toml`
 ---
 The following lines of code can help you add a missing module to your `pyproject.toml` file. This only works if the py script you are running is already part of a poetry project folder, and if a `poetry.toml` file is located in the directory of any parents of the .py file containing the below block of code. If a `pyproject.toml` isn't found in any parents it'll fail. 
 
-    import sys
-    from project_manager import PoetryProjectManager as PPM
-    try:
-        import some_local_module_with_missing_dependencies_not_found_in_your_pypoetry_toml
-    except Exception as e:
-        PPM.add_poetry_package_from_exception(__file__,e,ignore_version=True)
+```python
+import sys
+
+from project_manager import PoetryProjectManager as PPM
+
+try:
+    import some_local_module_with_missing_dependencies_not_found_in_your_pypoetry_toml
+except Exception as e:
+    PPM.add_poetry_package_from_exception(__file__,e,ignore_version=True)
+
+sys.exit()
+```
 
 Uninstall a conda env
 --- 
+```python
+import sys
 
-    import sys
-    from project_manager import CondaEnvManager as CEM
+from project_manager import CondaEnvManager as CEM
 
-    conda_env_name = "hello_world"
-    rc = CEM.uninstall_conda_env(conda_env_name)
-    
-    assert rc == 0
-    sys.exit()
+conda_env_name = "hello_world"
+rc = CEM.uninstall_conda_env(conda_env_name)
 
+assert rc == 0
+
+sys.exit()
+```
 Uninstall a jupyter kernel
 --- 
+```python
+import sys
 
-    import sys
-    from project_manager import CondaEnvManager as CEM
+from project_manager import CondaEnvManager as CEM
 
-    kernel_name = "hello_world"
-    rc = CEM.uninstall_kernel(kernel_name)
-    
-    assert rc == 0
-    sys.exit()
+kernel_name = "hello_world"
+rc = CEM.uninstall_kernel(kernel_name)
 
+assert rc == 0
+
+sys.exit()
+```
 Uninstall a jupyter kernel and conda env
 --- 
 
-    import sys
-    from project_manager import CondaEnvManager as CEM
+```python
+import sys
 
-    conda_env_name = "hello_world"
-    kernel_name = "hello_world"
+from project_manager import CondaEnvManager as CEM
 
-    # specify 1 name
-    # The default assumes that conda_env_name == kernel_name
-    CEM.uninstall_conda_and_kernel(conda_env_name)
+conda_env_name = "hello_world"
+kernel_name = "hello_world"
 
-    # specify 2 names if both are different
-    CEM.uninstall_conda_and_kernel(conda_env_name="hello_world",kernel_name="some_other_name")
+# specify 1 name
+# The default assumes that conda_env_name == kernel_name
+CEM.uninstall_conda_and_kernel(conda_env_name)
 
-    sys.exit()
+# specify 2 names if both are different
+CEM.uninstall_conda_and_kernel(conda_env_name="hello_world",kernel_name="some_other_name")
 
+sys.exit()
+```
 Executing `git init`
 --- 
+```python
+import sys
 
-    import sys
-    from project_manager import GitProjectManager as GPM
+from project_manager import GitProjectManager as GPM
 
-    # None for current directory
-    path_to_dir = None 
+# None for current directory
+path_to_dir = None 
 
-    # Otherwise specify the folder path
-    path_to_dir = "path/to_some/folder"
+# Otherwise specify the folder path
+path_to_dir = "path/to_some/folder"
 
-    GPM.init_dir(path_to_dir)
+GPM.init_dir(path_to_dir)
 
-    sys.exit()
-
+sys.exit()
+```
 (optional) Use `gy` to generate a `.gitignore` file (requires `gy`)
 --
 This adds the following gitignore files to the directory passed in
 
-`git_ignores_to_add = ['dropbox', 'jetbrains', 'jupyternotebooks', 'macos', 'microsoftoffice', 'python','sublimetext', 'virtualenv', 'visualstudio', 'visualstudiocode']`
+```python
+git_ignores_to_add = ['dropbox', 'jetbrains', 'jupyternotebooks', 'macos', 'microsoftoffice', 'python','sublimetext', 'virtualenv', 'visualstudio', 'visualstudiocode']
+```
 
+```python
+import sys
 
+from project_manager import ProjectManager as PM
 
-    import sys
-    from project_manager import ProjectManager as PM
+path_to_proj_dir = "path/to_some/folder"
+PM.add_git_ignore_to_project(path_to_proj_dir)
 
-    path_to_proj_dir = "path/to_some/folder"
-    PM.add_git_ignore_to_project(path_to_proj)
-
+sys.exit()
+```
 
 
 Create a Conda Env, Register Jupyter Kernel, and Init Current Directory as a Poetry Project
@@ -154,46 +171,49 @@ Create a Conda Env, Register Jupyter Kernel, and Init Current Directory as a Poe
 Running the following command, creates a Python 3.9 conda env, registers the jupyter kernel, and inits the current directory as a poetry project:
 
     
-    import sys
+```python
+import sys
 
-    from project_manager import LocalProjectManager as LPM
-    
-    env_name = "hello_world"
-    python_version = "3.9"
-    
-    LPM.init_current_dir_as_a_poetry_conda_project(env_name, python_version)
+from project_manager import LocalProjectManager as LPM
 
-    sys.exit()
+env_name = r"hello_world"
+python_version = r"3.9"
 
+LPM.init_current_dir_as_a_poetry_conda_project(env_name, python_version)
+
+sys.exit()
+```
 ## Register Python Interpreters with Sublime Text 3
 Registering Any Python Interpreter with Sublime Text 3
 ---
 If you're interested in registering any Python interpreter with Sublime Text 3, running the following block should help you do that.
 
-    import sys
+```python
+import sys
 
-    from project_manager import SublimeBuildConfigGenerator as SBCG
-    
-    path_to_python_bin = "/opt/homebrew/anaconda3/envs/hello_world/bin"
-    build_config_name = "hello_world" 
+from project_manager import SublimeBuildConfigGenerator as SBCG
 
-    SBCG.export_sublime_text_build_config(path_to_python_bin, build_config_name)
+path_to_python_bin = "/opt/homebrew/anaconda3/envs/hello_world/bin"
+build_config_name = "hello_world" 
 
-    sys.exit()
+SBCG.export_sublime_text_build_config(path_to_python_bin, build_config_name)
 
+sys.exit()
+```
 Registering a Conda Python Interpreter with Sublime Text 3
 ---
 If you want to register a Conda env with Sublime Text 3 without looking up the path to it, then the following block should suffice.
 
-    import sys
-    
-    from project_manager import SublimeBuildConfigGenerator as SBCG
+```python
+import sys
 
-    conda_env_name = "hello_world"
-    SBCG.generate_sublime_text_3_build_config_from_conda_env(conda_env_name)
+from project_manager import SublimeBuildConfigGenerator as SBCG
 
-    sys.exit()
+conda_env_name = "hello_world"
+SBCG.generate_sublime_text_3_build_config_from_conda_env(conda_env_name)
 
+sys.exit()
+```
 Sublime Text 3 - Build Config Output Path
 ---
 
