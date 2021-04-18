@@ -1,5 +1,7 @@
+import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 import platform
 
@@ -326,9 +328,10 @@ class CommonPSCommands:
 
     @staticmethod
     def run_command(cmd_args, *args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=None, return_process=False,
-                    collect_stripped_text=False, **kwargs):
+                    collect_stripped_text=False, verbose=True, **kwargs):
         if isinstance(cmd_args, str):
-            if "&&" in cmd_args:
+            if ("&&" in cmd_args) and (platform.system()=="Windows"):
+                # If && is split on MacOS everything is executed seperately,
                 cmd_args = cmd_args.split()
             else:
                 cmd_args = [cmd_args]
@@ -337,7 +340,7 @@ class CommonPSCommands:
         p = subprocess.Popen(cmd_args, *args, stdin=stdin, stdout=stdout, text=text, **kwargs)
         if return_process:
             return p
-        text_collected = [] # TODO: Find out built-ins on polling and collecting this output
+        text_collected = []  # TODO: Find out built-ins on polling and collecting this output
         while True:
             cur_status = p.poll()
             if cur_status:  # 0s won't be printed
@@ -349,7 +352,8 @@ class CommonPSCommands:
                 cur_text = output.strip()
                 if collect_stripped_text:
                     text_collected.append(cur_text)
-                print(cur_text)
+                if verbose:
+                    print(cur_text)
             if cur_status == 0:
                 print(f"Success!\nFinished running {cmd_args}")
                 break
@@ -458,6 +462,31 @@ class CondaEnvManager:
         all_lines = [l.strip() for l in all_lines if ("Available kernels" not in l)]
         kernel_names, kernel_paths = CondaEnvManager.get_env_info_from_lines(all_lines)
         return kernel_names, kernel_paths
+
+    @staticmethod
+    def lookup_kernel(env_name):
+        # TODO: Make available to other platforms, this only works for Macs
+        path_to_kernel = Path(f"~/Library/Jupyter/kernels/{env_name}/kernel.json").expanduser()
+        assert path_to_kernel.exists()
+        return path_to_kernel
+
+    @staticmethod
+    def verify_kernel_pairing(env_name):
+        kernel_config_path = CondaEnvManager.lookup_kernel(env_name)
+        with open(kernel_config_path,'r') as f:
+            kernel_config = json.load(f)
+        argv = kernel_config.get('argv',[])
+        if argv:
+            path_to_py = Path(argv[0])
+            try:
+                assert env_name in path_to_py.parts
+            except Exception as e:
+                print(e)
+                print("The Kernel is improperly matched to its conda name!")
+        else:
+            print("Kernel config doesn't exist")
+            raise Exception
+
 
     @staticmethod
     def conda_and_kernel_name_available(clean_proj_name, both=False):
@@ -593,19 +622,44 @@ class CondaEnvManager:
         echo_cmds = ['conda', 'info', '--base']
         if platform.system() == "Windows":
             # TODO: This always prints out for windows commands
-            rc, text = CommonPSCommands.run_command(echo_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, collect_stripped_text=True)
-            output = text[0].strip() # TODO: last elem is a new line str for some reason
+            rc, text = CommonPSCommands.run_command(echo_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+                                                    verbose=False, collect_stripped_text=True)
+            output = text[0].strip()  # TODO: last elem is a new line str for some reason
         else:
             p = CommonPSCommands.run_command(echo_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
-                                             return_process=True)
+                                             return_process=True,shell=False)
             output, errors = p.communicate()
         return output.strip()
 
     @staticmethod
     def get_conda_sh():
-        conda_base = CondaEnvManager.get_conda_base()
-        conda_sh = (Path(conda_base.strip()) / "etc/profile.d/conda.sh").resolve().as_posix()
-        return conda_sh
+        try:
+            conda_base = CondaEnvManager.get_conda_base()
+            conda_sh = (Path(conda_base.strip()) / "etc/profile.d/conda.sh").resolve()
+            assert conda_sh.parent.exists()
+        except Exception as e:
+            print(e)
+            print("trying to get base from dot_conda environments txt file!")
+            conda_base = CondaEnvManager.get_conda_base_from_dot_conda_envs_txt()
+            conda_sh = (Path(conda_base.strip()) / "etc/profile.d/conda.sh").resolve()
+
+        assert conda_sh.parent.exists()
+        return conda_sh.as_posix()
+
+    @staticmethod
+    def get_conda_base_from_dot_conda_envs_txt():
+        path_to_dot_conda_envs = Path("~/.conda/environments.txt").expanduser()
+        assert path_to_dot_conda_envs.exists()
+        with open(path_to_dot_conda_envs, 'r') as f:
+            all_lines = f.readlines()
+            all_lines = [l.strip() for l in all_lines]
+        try:
+            assert len(all_lines) == 1
+        except Exception as e:
+            print(e)
+            print(f"Multiple base conda environments exist!\n inspect\n{path_to_dot_conda_envs}")
+            print("Returning first line")
+        return all_lines[0]
 
     @staticmethod
     def activate_conda_env(env_name, return_cmd=False):
@@ -677,8 +731,15 @@ class GitProjectManager:
 class LocalProjectManager:
 
     @staticmethod
-    def init_curent_dir_as_a_poetry_conda_project(clean_env_name="hello_world", python_version="3.9",
+    def init_curent_dir_as_a_poetry_conda_project(clean_env_name="hello_world", python_version:str="3.9",
                                                   add_git=False):
+        """
+
+        :param str clean_env_name: A name for your conda env without illegal characterss
+        :param str python_version: The python version of conda you're interested in
+        :param bool add_git: Initialize the current directory with `git init`
+        :return: 0
+        """
         CondaEnvManager.create_and_init_conda_env(clean_env_name, python_version)
         PoetryProjectManager.execute_poetry_init(clean_env_name)
         PoetryProjectManager.link_poetry_proj_with_conda_env(clean_env_name)
@@ -691,8 +752,47 @@ class LocalProjectManager:
                 print("Make sure that you install gy if you want to add .gitignore files")
         return 0
 
+class SublimeBuildConfigGenerator:
+
+    @staticmethod
+    def get_filepath_to_sublime_text_build_config(env_name):
+        file_name = f"{env_name}.sublime-build"
+        if platform.system() == "Windows":
+            app_data = Path(os.getenv("APPDATA"))
+        else:
+            app_data = Path("~").expanduser() / f"Library/Application Support"
+        sublime_build_path = f"Sublime Text 3/Packages/User/{file_name}"
+        path_to_build_config_settings = app_data.joinpath(sublime_build_path)
+        assert path_to_build_config_settings.parent.exists()
+        return path_to_build_config_settings.as_posix()
+
+    @staticmethod
+    def generate_sublime_text_3_build_config_from_conda_env(env_name):
+        path_to_env = CondaEnvManager.get_path_to_conda_env(env_name)
+        path_to_python_bin = Path(path_to_env).joinpath("bin").as_posix()
+        SublimeBuildConfigGenerator.export_sublime_text_build_config(path_to_python_bin, env_name)
+
+    @staticmethod
+    def export_sublime_text_build_config(path_to_python_bin, build_config_name):
+        sublime_build_config_file_contents = SublimeBuildConfigGenerator.get_sublime_text_build_config_contents(
+            path_to_python_bin)
+        sublime_config_filepath = SublimeBuildConfigGenerator.get_filepath_to_sublime_text_build_config(build_config_name)
+        with open(sublime_config_filepath, 'w') as f:
+            f.write(json.dumps(sublime_build_config_file_contents, indent=4))
+
+    @staticmethod
+    def get_sublime_text_build_config_contents(path_to_python_bin:str):
+        sublime_build_config_file_contents = {
+            "path": path_to_python_bin,
+            "cmd": ["python", "-u", "$file"],
+            "file_regex": "^[ ]*File \"(...*?)\", line ([0-9]*)",
+            "selector": "source.python"
+        }
+        return sublime_build_config_file_contents
+
 
 if __name__ == "__main__":
     env_name = "hello_world"
     python_version = "3.9"
     rc = LocalProjectManager.init_curent_dir_as_a_poetry_conda_project(env_name, python_version)
+    sys.exit()
