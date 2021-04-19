@@ -467,26 +467,41 @@ class CondaEnvManager:
     def lookup_kernel(env_name):
         # TODO: Make available to other platforms, this only works for Macs
         path_to_kernel = Path(f"~/Library/Jupyter/kernels/{env_name}/kernel.json").expanduser()
-        assert path_to_kernel.exists()
+        try:
+            assert path_to_kernel.exists()
+        except Exception as e:
+            print(e)
+            raise e
         return path_to_kernel
 
     @staticmethod
     def verify_kernel_pairing(env_name):
         kernel_config_path = CondaEnvManager.lookup_kernel(env_name)
-        with open(kernel_config_path,'r') as f:
+        kernel_config = CondaEnvManager.load_kernel_config(kernel_config_path)
+        kernel_paired_to_env = CondaEnvManager.verify_if_kernel_config_contains_env_path(env_name, kernel_config)
+        return kernel_paired_to_env
+
+    @staticmethod
+    def load_kernel_config(kernel_config_path):
+        with open(kernel_config_path, 'r') as f:
             kernel_config = json.load(f)
-        argv = kernel_config.get('argv',[])
+        return kernel_config
+
+    @staticmethod
+    def verify_if_kernel_config_contains_env_path(env_name, kernel_config):
+        argv = kernel_config.get('argv', [])
         if argv:
             path_to_py = Path(argv[0])
             try:
                 assert env_name in path_to_py.parts
+                return True
             except Exception as e:
                 print(e)
                 print("The Kernel is improperly matched to its conda name!")
+                return False
         else:
             print("Kernel config doesn't exist")
-            raise Exception
-
+            return False
 
     @staticmethod
     def conda_and_kernel_name_available(clean_proj_name, both=False):
@@ -673,7 +688,6 @@ class CondaEnvManager:
         conda_act = ['conda', 'activate', env_name]
         conda_act_str = " ".join(conda_act)
 
-        conda_act_test = [source_conda_str, conda_act_str]
         conda_act_test = source_conda + ["&&"] + conda_act
         conda_act_test_str = " ".join(conda_act_test)
         if return_cmd:
