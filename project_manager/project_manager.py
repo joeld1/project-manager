@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 import platform
+from typing import List, Dict, Union
 
 try:
     import stringcase
@@ -148,6 +149,40 @@ class PoetryProjectManager:
         poetry_proj_dir = PoetryProjectManager.get_poetry_project_dir(file_importing_from)
         rc = PoetryProjectManager.add_dependency_to_pyproject_toml(poetry_proj_dir, env_name, dependency)
         return rc
+
+    @staticmethod
+    def add_poetry_package_from_requirements_txt(dir_containing_pyproject_toml:str,poetry_proj_conda_env_name:str,
+                                                 path_to_requirements_txt:str,try_pinned_versions:bool=False):
+        # TODO: Refactor
+        reqs = CommonPSCommands.parse_requirements_txt(path_to_requirements_txt)
+        for cur_dependency in reqs:
+            dependency = cur_dependency['name']
+            if cur_dependency['is_pinned']:
+                dependency_pinned = cur_dependency['line_in_reqs_txt']
+            else:
+                dependency_pinned = cur_dependency['name']
+            poetry_cmd = f"poetry add {dependency}"
+            poetry_cmd_pinned = f"poetry add {dependency_pinned}"
+            try_again = False
+            if try_pinned_versions and (dependency_pinned != dependency):
+                print("Will attempt to add {}")
+                try:
+                    rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd_pinned, dir_containing_pyproject_toml,
+                                                                 poetry_proj_conda_env_name)
+                    assert rc == 0
+                except Exception as e:
+                    try_again = True
+                    print(e)
+                    print("Unable to add poetry dependency with pinned version\nAttempting to add without pinning")
+            if (not try_pinned_versions) or (dependency_pinned == dependency) or try_again:
+                try:
+                    rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, dir_containing_pyproject_toml,
+                                                                 poetry_proj_conda_env_name)
+                    assert rc == 0
+                except Exception as e:
+                    print(e)
+                    print("Unable to add poetry dependency with pinned version")
+
 
     @staticmethod
     def add_dependency_to_pyproject_toml(dir_containing_pyproject_toml: str, poetry_proj_conda_env_name: str,
@@ -330,7 +365,7 @@ class CommonPSCommands:
     def run_command(cmd_args, *args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=None, return_process=False,
                     collect_stripped_text=False, verbose=True, **kwargs):
         if isinstance(cmd_args, str):
-            if ("&&" in cmd_args) and (platform.system()=="Windows"):
+            if ("&&" in cmd_args) and (platform.system() == "Windows"):
                 # If && is split on MacOS everything is executed seperately,
                 cmd_args = cmd_args.split()
             else:
@@ -427,6 +462,34 @@ class CommonPSCommands:
         p1 = subprocess.Popen(["echo", y_cmd], stdout=subprocess.PIPE, text=True, shell=use_shell)
         return p1
 
+    @staticmethod
+    def parse_requirements_txt(reqs_path: str) -> List[Dict[str, Union[str, bool]]]:
+        all_dependencies = []
+        with open(reqs_path, 'r') as f:
+            lines = list(filter(None, f.read().splitlines()))
+            lines = list(map(lambda x: x.split("#")[0] if "#" in x else x, lines))  # remove comments
+            lines = list(filter(None, lines))
+            for dep in lines:
+                cur_dep = {}
+                cur_dep['line_in_reqs_txt'] = dep
+                cur_dep['name'] = ""
+                cur_dep['is_git_dependency'] = False
+                cur_dep['is_pinned'] = False
+                if dep.startswith("git"):
+                    try:
+                        cur_dep['name'] = dep.split("/")[-1]
+                    except Exception as e:
+                        cur_dep['name'] = dep
+                        print(e)
+                    cur_dep['is_git_dependency'] = True
+                elif "==" in dep:
+                    cur_dep['name'] = dep.split("==")[0]
+                    cur_dep['is_pinned'] = True
+                else:
+                    cur_dep['name'] = dep
+                all_dependencies.append(cur_dep)
+        return all_dependencies
+
 
 class CondaEnvManager:
 
@@ -464,9 +527,13 @@ class CondaEnvManager:
         return kernel_names, kernel_paths
 
     @staticmethod
-    def lookup_kernel(env_name):
-        # TODO: Make available to other platforms, this only works for Macs
-        path_to_kernel = Path(f"~/Library/Jupyter/kernels/{env_name}/kernel.json").expanduser()
+    def lookup_kernel(env_name: str):
+        rel_path_to_kernel = f"Jupyter/kernels/{env_name}/kernel.json"
+        if platform.system() == "Windows":
+            # TODO: Test on PC
+            path_to_kernel = Path(os.getenv("APPDATA")).resolve().joinpath(rel_path_to_kernel)
+        else:
+            path_to_kernel = Path(f"~/Library").expanduser().joinpath(rel_path_to_kernel)
         try:
             assert path_to_kernel.exists()
         except Exception as e:
@@ -642,7 +709,7 @@ class CondaEnvManager:
             output = text[0].strip()  # TODO: last elem is a new line str for some reason
         else:
             p = CommonPSCommands.run_command(echo_cmds, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
-                                             return_process=True,shell=False)
+                                             return_process=True, shell=False)
             output, errors = p.communicate()
         return output.strip()
 
@@ -745,7 +812,7 @@ class GitProjectManager:
 class LocalProjectManager:
 
     @staticmethod
-    def init_current_dir_as_a_poetry_conda_project(clean_env_name:str="hello_world", python_version:str= "3.9",
+    def init_current_dir_as_a_poetry_conda_project(clean_env_name: str = "hello_world", python_version: str = "3.9",
                                                    add_git=False):
         """
 
@@ -765,6 +832,7 @@ class LocalProjectManager:
                 print(e)
                 print("Make sure that you install gy if you want to add .gitignore files")
         return 0
+
 
 class SublimeBuildConfigGenerator:
 
@@ -790,12 +858,13 @@ class SublimeBuildConfigGenerator:
     def export_sublime_text_build_config(path_to_python_bin, build_config_name):
         sublime_build_config_file_contents = SublimeBuildConfigGenerator.get_sublime_text_build_config_contents(
             path_to_python_bin)
-        sublime_config_filepath = SublimeBuildConfigGenerator.get_filepath_to_sublime_text_build_config(build_config_name)
+        sublime_config_filepath = SublimeBuildConfigGenerator.get_filepath_to_sublime_text_build_config(
+            build_config_name)
         with open(sublime_config_filepath, 'w') as f:
             f.write(json.dumps(sublime_build_config_file_contents, indent=4))
 
     @staticmethod
-    def get_sublime_text_build_config_contents(path_to_python_bin:str):
+    def get_sublime_text_build_config_contents(path_to_python_bin: str):
         sublime_build_config_file_contents = {
             "path": path_to_python_bin,
             "cmd": ["python", "-u", "$file"],
