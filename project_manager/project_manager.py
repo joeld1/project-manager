@@ -151,8 +151,8 @@ class PoetryProjectManager:
         return rc
 
     @staticmethod
-    def add_poetry_package_from_requirements_txt(dir_containing_pyproject_toml:str,poetry_proj_conda_env_name:str,
-                                                 path_to_requirements_txt:str,try_pinned_versions:bool=False):
+    def add_poetry_package_from_requirements_txt(dir_containing_pyproject_toml: str, poetry_proj_conda_env_name: str,
+                                                 path_to_requirements_txt: str, try_pinned_versions: bool = False):
         # TODO: Refactor
         reqs = CommonPSCommands.parse_requirements_txt(path_to_requirements_txt)
         for cur_dependency in reqs:
@@ -183,13 +183,21 @@ class PoetryProjectManager:
                     print(e)
                     print("Unable to add poetry dependency with pinned version")
 
-
     @staticmethod
     def add_dependency_to_pyproject_toml(dir_containing_pyproject_toml: str, poetry_proj_conda_env_name: str,
                                          dependency: str):
         poetry_cmd = f"poetry add {dependency}"
         rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, dir_containing_pyproject_toml,
                                                      poetry_proj_conda_env_name)
+        return rc
+
+    @staticmethod
+    def clear_poetry_cache(poetry_proj_conda_env_name: str):
+        poetry_cmd = "poetry cache clear --all pypi"
+        dir_containing_pyproject_toml = Path(".").resolve().as_posix()
+        rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, dir_containing_pyproject_toml,
+                                                     poetry_proj_conda_env_name)
+        assert rc == 0
         return rc
 
     @staticmethod
