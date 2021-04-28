@@ -841,6 +841,39 @@ class LocalProjectManager:
                 print("Make sure that you install gy if you want to add .gitignore files")
         return 0
 
+    @staticmethod
+    def create_init_link_conda_env_to_existing_poetry_project(clean_env_name: str = "hello_world", python_version: str = "3.9"):
+        CondaEnvManager.create_and_init_conda_env(clean_env_name, python_version)
+        PoetryProjectManager.link_poetry_proj_with_conda_env(clean_env_name)
+        return 0
+
+    @staticmethod
+    def migrate_requirements_to_poetry_toml(poetry_proj_conda_env_name: str = "hello_world", requirements_txt_name:str=None,try_pinned_versions: bool = False):
+        cur_dir = Path(".").resolve()
+        cur_dir_str = cur_dir.as_posix()
+
+        dir_containing_pyproject_toml = cur_dir_str
+        if requirements_txt_name is None:
+            path_to_requirements_txt = cur_dir.joinpath("requirements.txt")
+        else:
+            path_to_requirements_txt = cur_dir.joinpath(requirements_txt_name)
+
+        try:
+            assert path_to_requirements_txt.exists()
+            path_to_requirements_txt = path_to_requirements_txt.as_posix()
+        except Exception as e:
+            print(e)
+            print("There's no requirements file to add! Returning")
+            return
+
+
+
+        add_poetry_package_from_requirements_txt(dir_containing_pyproject_toml, poetry_proj_conda_env_name,path_to_requirements_txt,
+            try_pinned_versions=try_pinned_versions)
+        CondaEnvManager.create_and_init_conda_env(clean_env_name, python_version)
+        PoetryProjectManager.link_poetry_proj_with_conda_env(clean_env_name)
+        return 0
+
 
 class SublimeBuildConfigGenerator:
 
