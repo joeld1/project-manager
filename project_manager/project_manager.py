@@ -152,36 +152,111 @@ class PoetryProjectManager:
 
     @staticmethod
     def add_poetry_package_from_requirements_txt(dir_containing_pyproject_toml: str, poetry_proj_conda_env_name: str,
-                                                 path_to_requirements_txt: str, try_pinned_versions: bool = False):
-        # TODO: Refactor
+                                                 path_to_requirements_txt: str, try_pinned_versions: bool = False,
+                                                 warn_before_add=True):
         reqs = CommonPSCommands.parse_requirements_txt(path_to_requirements_txt)
         for cur_dependency in reqs:
-            dependency = cur_dependency['name']
-            if cur_dependency['is_pinned']:
-                dependency_pinned = cur_dependency['line_in_reqs_txt']
+            PoetryProjectManager.attempt_adding_dependency(poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                                                           dir_containing_pyproject_toml=dir_containing_pyproject_toml,
+                                                           dependency=cur_dependency,
+                                                           try_pinned_versions=try_pinned_versions,
+                                                           warn_before_add=warn_before_add)
+
+    @staticmethod
+    def attempt_adding_dependency(poetry_proj_conda_env_name, dir_containing_pyproject_toml, dependency,
+                                  try_pinned_versions, warn_before_add):
+        required_keys = {'line_in_reqs_txt', 'name', 'is_git_dependency', 'is_pinned'}
+        keys_found = required_keys.issubset(set(dependency.keys()))
+        assert keys_found  # want to fit this structure
+
+        poetry_cmds = PoetryProjectManager.get_poetry_add_cmds_for_dependency(dependency=dependency)
+        dependency_is_pinned = poetry_cmds['dependency_is_pinned']
+        try_add_pinned_dependency = try_pinned_versions and (dependency_is_pinned)
+        cont_reply = PoetryProjectManager.prompt_before_adding_dependency(poetry_cmds=poetry_cmds,
+                                                                          try_add_pinned_dependency=try_add_pinned_dependency,
+                                                                          warn_before_add=warn_before_add)
+        break_out = cont_reply.lower() == "q"
+        skip_add = cont_reply.lower() == "s"
+        continue_w_adding = (not skip_add) and (not break_out)
+        try_add_wo_pinned_version = (not try_pinned_versions) or (not dependency_is_pinned)
+        if continue_w_adding:
+            PoetryProjectManager.try_adding_dependency(poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                                                       dir_containing_pyproject_toml=dir_containing_pyproject_toml,
+                                                       poetry_cmds=poetry_cmds,
+                                                       try_add_wo_pinned_version=try_add_wo_pinned_version,
+                                                       try_add_pinned_dependency=try_add_pinned_dependency)
+        elif break_out:
+            print("Now raising exception in order to break out of script")
+            raise Exception
+
+    @staticmethod
+    def prompt_before_adding_dependency(poetry_cmds, try_add_pinned_dependency, warn_before_add):
+        cont_reply = ""
+        if warn_before_add:
+            if try_add_pinned_dependency:
+                cur_dep = poetry_cmds['dep_w_version_pinned']
             else:
-                dependency_pinned = cur_dependency['name']
-            poetry_cmd = f"poetry add {dependency}"
-            poetry_cmd_pinned = f"poetry add {dependency_pinned}"
-            try_again = False
-            if try_pinned_versions and (dependency_pinned != dependency):
-                print("Will attempt to add {}")
-                try:
-                    rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd_pinned, dir_containing_pyproject_toml,
-                                                                 poetry_proj_conda_env_name)
-                    assert rc == 0
-                except Exception as e:
-                    try_again = True
-                    print(e)
-                    print("Unable to add poetry dependency with pinned version\nAttempting to add without pinning")
-            if (not try_pinned_versions) or (dependency_pinned == dependency) or try_again:
-                try:
-                    rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, dir_containing_pyproject_toml,
-                                                                 poetry_proj_conda_env_name)
-                    assert rc == 0
-                except Exception as e:
-                    print(e)
-                    print("Unable to add poetry dependency with pinned version")
+                cur_dep = poetry_cmds['dep_wo_version_pinned']
+            cont_reply = input(
+                f"Will attempt to add {cur_dep}\nEnter [s] to skip, [q] to break, enter to continue")
+        return cont_reply
+
+    @staticmethod
+    def get_poetry_add_cmds_for_dependency(dependency: Dict[str, str]):
+        # TODO: Refactor
+        poetry_cmds = {}
+        dependency = dependency['name']
+        if dependency['is_pinned']:
+            dependency_pinned = dependency['line_in_reqs_txt']
+        else:
+            dependency_pinned = dependency['name']
+        poetry_cmd = f"poetry add {dependency}"
+        poetry_cmd_pinned = f"poetry add {dependency_pinned}"
+        poetry_cmds['dep_wo_version_pinned'] = dependency
+        poetry_cmds['dep_w_version_pinned'] = dependency_pinned
+
+        poetry_cmds['cmd_wo_version_pinned'] = poetry_cmd
+        poetry_cmds['cmd_w_version_pinned'] = poetry_cmd_pinned
+
+        poetry_cmds['dependency_is_pinned'] = dependency_pinned != dependency
+        return poetry_cmds
+
+    @staticmethod
+    def try_adding_dependency(poetry_proj_conda_env_name, dir_containing_pyproject_toml, poetry_cmds,
+                              try_add_wo_pinned_version, try_add_pinned_dependency):
+        cur_dep = poetry_cmds['dep_w_version_pinned']
+        try_again = PoetryProjectManager.add_pinned_dependency(poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                                                               dir_containing_pyproject_toml=dir_containing_pyproject_toml,
+                                                               dependency=cur_dep,
+                                                               try_add_pinned_dependency=try_add_pinned_dependency)
+        if try_add_wo_pinned_version or try_again:
+            try:
+                cur_dep = poetry_cmds['dep_wo_version_pinned']
+                rc = PoetryProjectManager.add_dependency_to_pyproject_toml(
+                    dir_containing_pyproject_toml=dir_containing_pyproject_toml,
+                    poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                    dependency=cur_dep)
+                assert rc == 0
+            except Exception as e:
+                print(e)
+                print("Unable to add poetry dependency without pinned version")
+
+    @staticmethod
+    def add_pinned_dependency(poetry_proj_conda_env_name, dir_containing_pyproject_toml, dependency,
+                              try_add_pinned_dependency):
+        try_again = False
+        if try_add_pinned_dependency:
+            try:
+                rc = PoetryProjectManager.add_dependency_to_pyproject_toml(
+                    dir_containing_pyproject_toml=dir_containing_pyproject_toml,
+                    poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                    dependency=dependency)
+                assert rc == 0
+            except Exception as e:
+                try_again = True
+                print(e)
+                print("Unable to add poetry dependency with pinned version\nAttempting to add without pinning")
+        return try_again
 
     @staticmethod
     def add_dependency_to_pyproject_toml(dir_containing_pyproject_toml: str, poetry_proj_conda_env_name: str,
@@ -668,7 +743,23 @@ class CondaEnvManager:
         y = CommonPSCommands.echo_yes(return_cmd=True)
         kernel_cmd_str = " ".join(kernel_cmd)
         cmd = y + kernel_cmd_str
-        rc = CommonPSCommands.run_command([cmd], text=True, shell=True)
+
+    @staticmethod
+    def uninstall_kernel(kernel_name: str = ""):
+        try:
+            kernel_names, _ = CondaEnvManager.get_kernel_specs()
+            assert kernel_name in kernel_names
+        except Exception as e:
+            print(f"Kernel {kernel_name!r} does not exist!")
+        kernel_cmd = ["jupyter", "kernelspec", "uninstall", kernel_name, '-y']
+        y = CommonPSCommands.echo_yes(return_cmd=True)
+        kernel_cmd_str = " ".join(kernel_cmd)
+        cmd = y + kernel_cmd_str
+        if platform.system() == 'Windows':
+            rc = CommonPSCommands.run_command(kernel_cmd, text=True, shell=False)
+        else:
+            # TODO: Debug this for mac
+            rc = CommonPSCommands.run_command([cmd], text=True, shell=True)
         return rc
 
     @staticmethod
@@ -842,37 +933,72 @@ class LocalProjectManager:
         return 0
 
     @staticmethod
-    def create_init_link_conda_env_to_existing_poetry_project(clean_env_name: str = "hello_world", python_version: str = "3.9"):
+    def create_init_link_conda_env_to_existing_poetry_project(clean_env_name: str = "hello_world",
+                                                              python_version: str = "3.9"):
         CondaEnvManager.create_and_init_conda_env(clean_env_name, python_version)
         PoetryProjectManager.link_poetry_proj_with_conda_env(clean_env_name)
         return 0
 
     @staticmethod
-    def migrate_requirements_to_poetry_toml(poetry_proj_conda_env_name: str = "hello_world", requirements_txt_name:str=None,try_pinned_versions: bool = False):
+    def migrate_requirements_to_pypoetry_toml(poetry_proj_conda_env_name: str,
+                                              src_requirements_txt: str = None,
+                                              dest_pyproject_toml: str = None,
+                                              try_pinned_versions: bool = False,
+                                              warn_before_add=True):
         cur_dir = Path(".").resolve()
-        cur_dir_str = cur_dir.as_posix()
-
-        dir_containing_pyproject_toml = cur_dir_str
-        if requirements_txt_name is None:
-            path_to_requirements_txt = cur_dir.joinpath("requirements.txt")
+        if src_requirements_txt is None:
+            reqs_dir = cur_dir
+            requirements_txt_name = "requirements.txt"
         else:
-            path_to_requirements_txt = cur_dir.joinpath(requirements_txt_name)
+            path_to_reqs = Path(src_requirements_txt).resolve()
+            reqs_dir = path_to_reqs.parent
+            requirements_txt_name = path_to_reqs.name
 
+        if dest_pyproject_toml is None:
+            dir_containing_pyproject_toml = cur_dir.as_posix()
+        else:
+            dir_containing_pyproject_toml = Path(dest_pyproject_toml).parent.as_posix()
+
+        try:
+            rc, path_to_requirements_txt = LocalProjectManager.get_requirements_txt_path(
+                requirements_directory=reqs_dir, requirements_txt_name=requirements_txt_name)
+            assert rc == 0
+        except Exception as e:
+            print("Unable to find requirements txt file to migrate")
+            raise e
+        PoetryProjectManager.add_poetry_package_from_requirements_txt(
+            dir_containing_pyproject_toml=dir_containing_pyproject_toml,
+            poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+            path_to_requirements_txt=path_to_requirements_txt,
+            try_pinned_versions=try_pinned_versions,
+            warn_before_add=warn_before_add)
+        return 0
+
+    @staticmethod
+    def migrate_pypoetry_toml_to_pypoetry_toml(poetry_proj_conda_env_name: str,
+                                               src_pyproject_toml: str = None,
+                                               dest_pyproject_toml: str = None,
+                                               try_pinned_versions: bool = False,
+                                               warn_before_add=True):
+        pass
+
+    @staticmethod
+    def get_requirements_txt_path(requirements_directory: Path, requirements_txt_name: str):
+        if requirements_directory is None:
+            requirements_directory = Path(".").resolve()
+        rc = 0
+        if requirements_txt_name is None:
+            path_to_requirements_txt = requirements_directory.joinpath("requirements.txt")
+        else:
+            path_to_requirements_txt = requirements_directory.joinpath(requirements_txt_name)
         try:
             assert path_to_requirements_txt.exists()
             path_to_requirements_txt = path_to_requirements_txt.as_posix()
         except Exception as e:
             print(e)
             print("There's no requirements file to add! Returning")
-            return
-
-
-
-        add_poetry_package_from_requirements_txt(dir_containing_pyproject_toml, poetry_proj_conda_env_name,path_to_requirements_txt,
-            try_pinned_versions=try_pinned_versions)
-        CondaEnvManager.create_and_init_conda_env(clean_env_name, python_version)
-        PoetryProjectManager.link_poetry_proj_with_conda_env(clean_env_name)
-        return 0
+            rc = 1
+        return rc, path_to_requirements_txt
 
 
 class SublimeBuildConfigGenerator:
