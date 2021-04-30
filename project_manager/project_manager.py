@@ -331,6 +331,7 @@ class PoetryProjectManager:
 
         rc = PoetryProjectManager.create_poetry_project_cmd(conda_env_name, proj_name, **kwargs)
         assert rc == 0
+        os.chdir(path_to_proj)
         rc = PoetryProjectManager.link_poetry_proj_with_conda_env(conda_env_name)
         assert rc == 0
         os.chdir(old_path)
