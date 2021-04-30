@@ -268,6 +268,8 @@ class PoetryProjectManager:
 
     @staticmethod
     def clear_poetry_cache(poetry_proj_conda_env_name: str):
+        yes = CommonPSCommands.echo_yes(return_cmd=True)
+        # TODO: Echo update this
         poetry_cmd = "poetry cache clear --all pypi"
         dir_containing_pyproject_toml = Path(".").resolve().as_posix()
         rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, dir_containing_pyproject_toml,
@@ -298,6 +300,8 @@ class PoetryProjectManager:
     @staticmethod
     def get_poetry_config_virtualenv_path_cmd_for_conda_env(clean_env_name):
         conda_env_path = CondaEnvManager.get_path_to_conda_env(clean_env_name)
+        if platform.system() == "Windows":
+            conda_env_path = Path(conda_env_path).joinpath("python.exe").as_posix()
         poetry_cmd = f"poetry config virtualenvs.path {conda_env_path} --local"
         return poetry_cmd
 
@@ -452,7 +456,8 @@ class CommonPSCommands:
                 # If && is split on MacOS everything is executed seperately,
                 cmd_args = cmd_args.split()
             else:
-                cmd_args = [cmd_args]
+                if not isinstance(cmd_args,list):
+                    cmd_args = [cmd_args]
         if collect_stripped_text:
             return_process = False
         p = subprocess.Popen(cmd_args, *args, stdin=stdin, stdout=stdout, text=text, **kwargs)
