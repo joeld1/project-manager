@@ -25,6 +25,8 @@ For some methods found in this module to work you need to have the following:
 ## Note 
 Some method names might undergo name changes as documentation is added.  
 
+Note many of these commands were run on a Mac. Do modify the snippets as needed to best suit your case, and raise any issues
+
 # Examples
 Create a Conda Environment and Register Kernel
 ---
