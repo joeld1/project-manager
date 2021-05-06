@@ -115,10 +115,11 @@ class PoetryProjectManager:
         toml_pattern = "pypoetry.toml"
         if Path(path).name == toml_pattern:
             return Path(path)
-        else:
-            dir_containing_pyproject_toml = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
-            path_to_toml = Path(dir_containing_pyproject_toml) / toml_pattern
-            return path_to_toml
+        if toml_pattern in os.listdir(path):
+            return Path(path).joinpath(toml_pattern)
+        dir_containing_pyproject_toml = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
+        path_to_toml = Path(dir_containing_pyproject_toml) / toml_pattern
+        return path_to_toml
 
     @staticmethod
     def get_poetry_module_dependencies(poetry_proj_py_filepath: str):
