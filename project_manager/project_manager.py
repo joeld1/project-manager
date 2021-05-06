@@ -65,18 +65,24 @@ class PoetryProjectManager:
 
     @staticmethod
     def search_for_toml_files(filepath: str, toml_pattern: str):
-        dir_containing_toml = Path(filepath)
-        if dir_containing_toml.is_file():
-            dir_containing_toml = dir_containing_toml.parent
-        toml_paths = list(dir_containing_toml.glob(toml_pattern))
-        return dir_containing_toml, toml_paths
+        cur_path = Path(filepath)
+        if cur_path.is_file():
+            if Path(filepath).name == toml_pattern:
+                return Path(filepath).parent
+            else:
+                return PoetryProjectManager.search_for_toml_files(cur_path.parent.as_posix(),toml_pattern)
+        if cur_path.is_dir():
+            if toml_pattern in os.listdir(filepath):
+                return cur_path
+            else:
+                return PoetryProjectManager.search_for_toml_files(cur_path.parent.as_posix(), toml_pattern)
 
     @staticmethod
     def get_poetry_project_dir(filepath_importing_from: str, toml_pattern="*pyproject.toml"):
         """
         This recursively finds a pyproject.toml from a given filepath.
 
-        If the filepath is a file it'll look at sibling files for a toml file, if it's a director it'll look within
+        If the filepath is a file it'll look at sibling files for a toml file, if it's a directory it'll look within
         its contents for a pyproject.toml file. If nothing is found, it'll go up 1 folder and restart the search and
         repeat the process until a toml pattern is found
 
@@ -85,11 +91,8 @@ class PoetryProjectManager:
         :return:
         """
         # TODO: Find out how to determine if is poetry proj, or regular python proj (i.e. requirements.txt)
-        path, toml_paths = PoetryProjectManager.search_for_toml_files(filepath_importing_from, toml_pattern)
-        if not toml_paths:
-            return PoetryProjectManager.get_poetry_project_dir(path.parent.as_posix())
-        else:
-            return path.as_posix()
+        toml_path = PoetryProjectManager.search_for_toml_files(filepath_importing_from, toml_pattern)
+        return Path(toml_path)
 
     @staticmethod
     def get_poetry_toml(path: str):
@@ -99,26 +102,27 @@ class PoetryProjectManager:
         :param path:
         :return:
         """
-        toml_pattern = "*poetry.toml"
-        poetry_proj_dir = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
-        cur_poetry_file = Path(poetry_proj_dir) / toml_pattern.replace("*", "")
+        toml_pattern = "poetry.toml"
+        if Path(path).name == toml_pattern:
+            return Path(path)
+        if toml_pattern in os.listdir(path):
+            return Path(path).joinpath(toml_pattern)
+
+        dir_containing_toml = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
+        cur_poetry_file = Path(dir_containing_toml).joinpath(toml_pattern)
         return cur_poetry_file
 
     @staticmethod
     def get_pyproject_toml(path: str):
         """
-        This searches for a pypoetry.toml file that is a sibling of the given path. It recursively searches parent
+        This searches for a pyproject.toml file that is a sibling of the given path. It recursively searches parent
         paths for a parent that contains a poetry.toml file.
         :param path:
         :return:
         """
-        toml_pattern = "pypoetry.toml"
-        if Path(path).name == toml_pattern:
-            return Path(path)
-        if toml_pattern in os.listdir(path):
-            return Path(path).joinpath(toml_pattern)
+        toml_pattern = "pyproject.toml"
         dir_containing_pyproject_toml = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
-        path_to_toml = Path(dir_containing_pyproject_toml) / toml_pattern
+        path_to_toml = Path(dir_containing_pyproject_toml).joinpath(toml_pattern)
         return path_to_toml
 
     @staticmethod
