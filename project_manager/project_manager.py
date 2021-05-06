@@ -113,9 +113,12 @@ class PoetryProjectManager:
         :return:
         """
         toml_pattern = "pypoetry.toml"
-        dir_containing_pyproject_toml = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
-        path_to_toml = Path(dir_containing_pyproject_toml) / toml_pattern
-        return path_to_toml
+        if Path(path).name == toml_pattern:
+            return Path(path)
+        else:
+            dir_containing_pyproject_toml = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
+            path_to_toml = Path(dir_containing_pyproject_toml) / toml_pattern
+            return path_to_toml
 
     @staticmethod
     def get_poetry_module_dependencies(poetry_proj_py_filepath: str):
@@ -1086,7 +1089,7 @@ class LocalProjectManager:
     def migrate_pypoetry_toml_to_pypoetry_toml(poetry_proj_conda_env_name: str,
                                                src_pyproject_toml: str = None,
                                                dest_pyproject_toml: str = None,
-                                               warn_before_add:bool=True):
+                                               warn_before_add: bool = True):
 
         assert Path(src_pyproject_toml).exists() and Path(dest_pyproject_toml).exists()
         dependencies = CommonPSCommands.read_toml(src_pyproject_toml, 'tool.poetry.dependencies')
@@ -1096,23 +1099,25 @@ class LocalProjectManager:
             if dep_str.lower() != "python":
                 if warn_before_add:
                     q1 = "Enter [q] to break, [c] to add unpinned dependency, [a] to input your own dependency, [p] to pass"
-                    resp = input(f"Would you like to add the following unpinned dependency ({dep_str!r}) (it's pinned version is {dependency_val!r})to {poetry_proj_conda_env_name!r}?\n{q1}")
+                    resp = input(
+                        f"Would you like to add the following unpinned dependency ({dep_str!r}) (it's pinned version is {dependency_val!r})to {poetry_proj_conda_env_name!r}?\n{q1}")
                 else:
                     resp = "c"
                 if resp.lower() == "q":
                     print("Now raising Exception to exit")
                     raise Exception
-                elif resp.lower() in ["c","a"]:
-                        if resp.lower() == "a":
-                            dep_str = input("Input your own dependency to fill in 'poetry add {...}' ")
-                        try:
-                            PoetryProjectManager.add_dependency_to_pyproject_toml(dir_containing_pyproject_toml=dest_pyproject_toml_dir,
-                                                                                  poetry_proj_conda_env_name=poetry_proj_conda_env_name,
-                                                                                  dependency=dep_str,
-                                                                                  wrap_in_quotes=False)
-                        except Exception as e:
-                            print("See output to identify un-addable dependency")
-                            print(e)
+                elif resp.lower() in ["c", "a"]:
+                    if resp.lower() == "a":
+                        dep_str = input("Input your own dependency to fill in 'poetry add {...}' ")
+                    try:
+                        PoetryProjectManager.add_dependency_to_pyproject_toml(
+                            dir_containing_pyproject_toml=dest_pyproject_toml_dir,
+                            poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                            dependency=dep_str,
+                            wrap_in_quotes=False)
+                    except Exception as e:
+                        print("See output to identify un-addable dependency")
+                        print(e)
                 else:
                     continue
 
