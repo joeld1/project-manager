@@ -78,7 +78,7 @@ class PoetryProjectManager:
                 return PoetryProjectManager.search_for_toml_files(cur_path.parent.as_posix(), toml_pattern)
 
     @staticmethod
-    def get_poetry_project_dir(filepath_importing_from: str, toml_pattern="*pyproject.toml"):
+    def get_poetry_project_dir(filepath_importing_from: str, toml_pattern="pyproject.toml"):
         """
         This recursively finds a pyproject.toml from a given filepath.
 
@@ -103,11 +103,6 @@ class PoetryProjectManager:
         :return:
         """
         toml_pattern = "poetry.toml"
-        if Path(path).name == toml_pattern:
-            return Path(path)
-        if toml_pattern in os.listdir(path):
-            return Path(path).joinpath(toml_pattern)
-
         dir_containing_toml = PoetryProjectManager.get_poetry_project_dir(path, toml_pattern=toml_pattern)
         cur_poetry_file = Path(dir_containing_toml).joinpath(toml_pattern)
         return cur_poetry_file
