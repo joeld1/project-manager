@@ -7,8 +7,6 @@ authors = ["JD <10216562+joeld1@users.noreply.github.com>"]
 [tool.poetry.dependencies]
 python = "^3.9"
 gy = "^1.0.2"
-toml = "^0.10.2"
-stringcase = "^1.2.0"
 
 [tool.poetry.dev-dependencies]
 
