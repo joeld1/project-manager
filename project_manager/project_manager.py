@@ -8,7 +8,7 @@ from functools import reduce
 from os import PathLike
 from pathlib import Path, PosixPath
 from subprocess import Popen
-from typing import Dict, List, Optional, Union
+from typing import Tuple, Dict, List, Optional, Union
 
 try:
     import gy
@@ -147,7 +147,7 @@ class PoetryProjectManager:
 
     @staticmethod
     def get_poetry_project_dir(
-        filepath_importing_from: str, toml_pattern: str = "pyproject.toml"
+            filepath_importing_from: str, toml_pattern: str = "pyproject.toml"
     ) -> PosixPath:
         """
         This recursively finds a pyproject.toml from a given filepath.
@@ -236,7 +236,7 @@ class PoetryProjectManager:
 
     @staticmethod
     def add_poetry_package_from_exception(
-        file_importing_from: str, except_obj: ModuleNotFoundError, ignore_verion=True
+            file_importing_from: str, except_obj: ModuleNotFoundError, ignore_verion=True
     ):
         """
 
@@ -288,11 +288,11 @@ class PoetryProjectManager:
 
     @staticmethod
     def add_poetry_package_from_requirements_txt(
-        dir_containing_pyproject_toml: str,
-        poetry_proj_conda_env_name: str,
-        path_to_requirements_txt: str,
-        try_pinned_versions: bool = False,
-        warn_before_add=True,
+            dir_containing_pyproject_toml: str,
+            poetry_proj_conda_env_name: str,
+            path_to_requirements_txt: str,
+            try_pinned_versions: bool = False,
+            warn_before_add=True,
     ):
         """
 
@@ -312,19 +312,19 @@ class PoetryProjectManager:
         for cur_dependency in reqs:
             PoetryProjectManager.attempt_adding_dependency(
                 poetry_proj_conda_env_name=poetry_proj_conda_env_name,
-                                                           dir_containing_pyproject_toml=dir_containing_pyproject_toml,
-                                                           dependency=cur_dependency,
-                                                           try_pinned_versions=try_pinned_versions,
+                dir_containing_pyproject_toml=dir_containing_pyproject_toml,
+                dependency=cur_dependency,
+                try_pinned_versions=try_pinned_versions,
                 warn_before_add=warn_before_add,
             )
 
     @staticmethod
     def attempt_adding_dependency(
-        poetry_proj_conda_env_name,
-        dir_containing_pyproject_toml,
-        dependency,
-        try_pinned_versions,
-        warn_before_add,
+            poetry_proj_conda_env_name,
+            dir_containing_pyproject_toml,
+            dependency,
+            try_pinned_versions,
+            warn_before_add,
     ):
         """
 
@@ -340,14 +340,12 @@ class PoetryProjectManager:
         keys_found = required_keys.issubset(set(dependency.keys()))
         assert keys_found  # want to fit this structure
 
-        poetry_cmds = PoetryProjectManager.get_poetry_add_cmds_for_dependency(
-            dependency=dependency
-        )
+        poetry_cmds = PoetryProjectManager.get_poetry_add_cmds_for_dependency(dependency=dependency)
         dependency_is_pinned = poetry_cmds["dependency_is_pinned"]
         try_add_pinned_dependency = try_pinned_versions and (dependency_is_pinned)
         cont_reply = PoetryProjectManager.prompt_before_adding_dependency(
             poetry_cmds=poetry_cmds,
-                                                                          try_add_pinned_dependency=try_add_pinned_dependency,
+            try_add_pinned_dependency=try_add_pinned_dependency,
             warn_before_add=warn_before_add,
         )
         break_out = cont_reply.lower() == "q"
@@ -359,9 +357,9 @@ class PoetryProjectManager:
         if continue_w_adding:
             PoetryProjectManager.try_adding_dependency(
                 poetry_proj_conda_env_name=poetry_proj_conda_env_name,
-                                                       dir_containing_pyproject_toml=dir_containing_pyproject_toml,
-                                                       poetry_cmds=poetry_cmds,
-                                                       try_add_wo_pinned_version=try_add_wo_pinned_version,
+                dir_containing_pyproject_toml=dir_containing_pyproject_toml,
+                poetry_cmds=poetry_cmds,
+                try_add_wo_pinned_version=try_add_wo_pinned_version,
                 try_add_pinned_dependency=try_add_pinned_dependency,
             )
         elif break_out:
@@ -370,7 +368,7 @@ class PoetryProjectManager:
 
     @staticmethod
     def prompt_before_adding_dependency(
-        poetry_cmds, try_add_pinned_dependency, warn_before_add
+            poetry_cmds, try_add_pinned_dependency, warn_before_add
     ):
         """
 
@@ -402,29 +400,29 @@ class PoetryProjectManager:
         """
         # TODO: Refactor
         poetry_cmds = {}
-        dependency = dependency["name"]
+        dependency_name = dependency["name"]
         if dependency["is_pinned"]:
             dependency_pinned = dependency["line_in_reqs_txt"]
         else:
             dependency_pinned = dependency["name"]
-        poetry_cmd = f"poetry add {dependency}"
+        poetry_cmd = f"poetry add {dependency_name}"
         poetry_cmd_pinned = f"poetry add {dependency_pinned}"
-        poetry_cmds["dep_wo_version_pinned"] = dependency
+        poetry_cmds["dep_wo_version_pinned"] = dependency_name
         poetry_cmds["dep_w_version_pinned"] = dependency_pinned
 
         poetry_cmds["cmd_wo_version_pinned"] = poetry_cmd
         poetry_cmds["cmd_w_version_pinned"] = poetry_cmd_pinned
 
-        poetry_cmds["dependency_is_pinned"] = dependency_pinned != dependency
+        poetry_cmds["dependency_is_pinned"] = dependency_pinned != dependency_name
         return poetry_cmds
 
     @staticmethod
     def try_adding_dependency(
-        poetry_proj_conda_env_name,
-        dir_containing_pyproject_toml,
-        poetry_cmds,
-        try_add_wo_pinned_version,
-        try_add_pinned_dependency,
+            poetry_proj_conda_env_name,
+            dir_containing_pyproject_toml,
+            poetry_cmds,
+            try_add_wo_pinned_version,
+            try_add_pinned_dependency,
     ):
         """
 
@@ -439,8 +437,8 @@ class PoetryProjectManager:
         cur_dep = poetry_cmds["dep_w_version_pinned"]
         try_again = PoetryProjectManager.add_pinned_dependency(
             poetry_proj_conda_env_name=poetry_proj_conda_env_name,
-                                                               dir_containing_pyproject_toml=dir_containing_pyproject_toml,
-                                                               dependency=cur_dep,
+            dir_containing_pyproject_toml=dir_containing_pyproject_toml,
+            dependency=cur_dep,
             try_add_pinned_dependency=try_add_pinned_dependency,
         )
         if try_add_wo_pinned_version or try_again:
@@ -458,10 +456,10 @@ class PoetryProjectManager:
 
     @staticmethod
     def add_pinned_dependency(
-        poetry_proj_conda_env_name,
-        dir_containing_pyproject_toml,
-        dependency,
-        try_add_pinned_dependency,
+            poetry_proj_conda_env_name,
+            dir_containing_pyproject_toml,
+            dependency,
+            try_add_pinned_dependency,
     ):
         """
 
@@ -491,11 +489,11 @@ class PoetryProjectManager:
 
     @staticmethod
     def add_dependency_to_pyproject_toml(
-        dir_containing_pyproject_toml: str,
-        poetry_proj_conda_env_name: str,
-        dependency: str,
-        wrap_in_quotes: bool = False,
-        options: str = "",
+            dir_containing_pyproject_toml: str,
+            poetry_proj_conda_env_name: str,
+            dependency: str,
+            wrap_in_quotes: bool = False,
+            options: str = "",
     ):
         """
 
@@ -544,8 +542,7 @@ class PoetryProjectManager:
 
     @staticmethod
     def execute_poetry_cmd(
-        poetry_cmd: str, poetry_proj_dir: str, env_name: str, **kwargs
-    ) -> int:
+            poetry_cmd: str, poetry_proj_dir: str, env_name: str, **kwargs) -> int:
         """
 
 
@@ -746,7 +743,7 @@ class PoetryProjectManager:
 
     @staticmethod
     def init_poetry_project(
-        clean_env_name, proj_name=None, proj_dir=".", python_version="3.9"
+            clean_env_name, proj_name=None, proj_dir=".", python_version="3.9"
     ):
         """
 
@@ -812,7 +809,7 @@ class PoetryProjectManager:
 
     @staticmethod
     def get_poetry_proj_env_name_from_poetry_toml_for_py_file(
-        poetry_proj_py_filepath: str,
+            poetry_proj_py_filepath: str,
     ):
         """
         This searches for the poetry.toml file a .py file (in a poetry proj) is associated with.
@@ -852,7 +849,7 @@ class PoetryProjectManager:
 
     @staticmethod
     def add_notebook_ipykernel_dependencies_to_pypoetry(
-        clean_env_name: str, dir_containing_pypoetry_file: str
+            clean_env_name: str, dir_containing_pypoetry_file: str
     ) -> int:
         """
 
@@ -865,17 +862,16 @@ class PoetryProjectManager:
 
         """
         try:
-            # TODO: Debug this!
             rc = PoetryProjectManager.add_dependency_to_pyproject_toml(
                 dir_containing_pypoetry_file,
-                                                                       poetry_proj_conda_env_name=clean_env_name,
+                poetry_proj_conda_env_name=clean_env_name,
                 dependency="notebook",
                 options="-D",
             )
             assert rc == 0
             rc = PoetryProjectManager.add_dependency_to_pyproject_toml(
                 dir_containing_pypoetry_file,
-                                                                       poetry_proj_conda_env_name=clean_env_name,
+                poetry_proj_conda_env_name=clean_env_name,
                 dependency="ipykernel",
                 options="-D",
             )
@@ -893,16 +889,16 @@ class CommonPSCommands:
 
     @staticmethod
     def run_command(
-        cmd_args: Union[str, List[str]],
-        *args,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        text=None,
-        return_process=False,
-        collect_stripped_text=False,
-        verbose=True,
-        **kwargs,
-    ) -> Union[Popen, int]:
+            cmd_args: Union[List[str], str],
+            *args,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=None,
+            return_process=False,
+            collect_stripped_text=False,
+            verbose=True,
+            **kwargs
+    ) -> Union[int, Popen]:
         """
 
 
@@ -983,8 +979,8 @@ class CommonPSCommands:
         all_python_dirs = list(
             filter(
                 lambda x: x.is_dir()
-                and ("." not in str(x))
-                and (not str(x).startswith("__")),
+                          and ("." not in str(x))
+                          and (not str(x).startswith("__")),
                 current_files,
             )
         )
@@ -1101,7 +1097,7 @@ class CommonPSCommands:
 
     @staticmethod
     def relate_paths_using_dot_notation(
-        first_path: PathLike, second_path: PathLike
+            first_path: PathLike, second_path: PathLike
     ) -> str:
         """
         Get the first path relative to second path using dot notation
@@ -1115,7 +1111,7 @@ class CommonPSCommands:
         """
         abs_path_1 = Path(first_path).resolve()
         if abs_path_1.is_file() and (
-            abs_path_1.name == "__init__.py"
+                abs_path_1.name == "__init__.py"
         ):  # have to point to dir containing file if this is True
             abs_path_1 = abs_path_1.parent
         abs_path_2 = Path(second_path).resolve()
@@ -1164,7 +1160,7 @@ class CondaEnvManager:
         for l in all_lines:
             env_name, *env_path = l.split()
             all_env_names.append(env_name)
-            all_env_paths.append(env_path)
+            all_env_paths.append("".join(env_path).strip())
         return all_env_names, all_env_paths
 
     @staticmethod
@@ -1219,23 +1215,6 @@ class CondaEnvManager:
         return path_to_kernel
 
     @staticmethod
-    def verify_kernel_pairing(env_name):
-        """
-
-
-        :param env_name:
-
-        """
-        kernel_config_path = CondaEnvManager.lookup_kernel(env_name)
-        kernel_config = CondaEnvManager.load_kernel_config(kernel_config_path)
-        kernel_paired_to_env = (
-            CondaEnvManager.verify_if_kernel_config_contains_env_path(
-                env_name, kernel_config
-            )
-        )
-        return kernel_paired_to_env
-
-    @staticmethod
     def load_kernel_config(kernel_config_path):
         """
 
@@ -1269,6 +1248,23 @@ class CondaEnvManager:
         else:
             print("Kernel config doesn't exist")
             return False
+
+    @staticmethod
+    def verify_kernel_pairing(env_name):
+        """
+
+
+        :param env_name:
+
+        """
+        kernel_config_path = CondaEnvManager.lookup_kernel(env_name)
+        kernel_config = CondaEnvManager.load_kernel_config(kernel_config_path)
+        kernel_paired_to_env = (
+            CondaEnvManager.verify_if_kernel_config_contains_env_path(
+                env_name, kernel_config
+            )
+        )
+        return kernel_paired_to_env
 
     @staticmethod
     def conda_and_kernel_name_available(clean_proj_name, both=False):
@@ -1406,7 +1402,7 @@ class CondaEnvManager:
         return rc
 
     @staticmethod
-    def create_conda_env(env_name: str, python_version: str) -> int:
+    def create_conda_env(env_name: str, python_version: Tuple[str]) -> int:
         """
 
 
@@ -1446,24 +1442,24 @@ class CondaEnvManager:
         assert rc == 0
         return rc
 
-    @staticmethod
-    def uninstall_kernel(kernel_name: str = ""):
-        """
-
-
-        :param kernel_name:  (Default value = "")
-        :type kernel_name: str
-
-        """
-        try:
-            kernel_names, _ = CondaEnvManager.get_kernel_specs()
-            assert kernel_name in kernel_names
-        except Exception as e:
-            print(f"Kernel {kernel_name!r} does not exist!")
-        kernel_cmd = ["jupyter", "kernelspec", "uninstall", kernel_name, "-y"]
-        y = CommonPSCommands.echo_yes(return_cmd=True)
-        kernel_cmd_str = " ".join(kernel_cmd)
-        cmd = y + kernel_cmd_str
+    # @staticmethod
+    # def uninstall_kernel(kernel_name: str = ""):
+    #     """
+    #
+    #
+    #     :param kernel_name:  (Default value = "")
+    #     :type kernel_name: str
+    #
+    #     """
+    #     try:
+    #         kernel_names, _ = CondaEnvManager.get_kernel_specs()
+    #         assert kernel_name in kernel_names
+    #     except Exception as e:
+    #         print(f"Kernel {kernel_name!r} does not exist!")
+    #     kernel_cmd = ["jupyter", "kernelspec", "uninstall", kernel_name, "-y"]
+    #     y = CommonPSCommands.echo_yes(return_cmd=True)
+    #     kernel_cmd_str = " ".join(kernel_cmd)
+    #     cmd = y + kernel_cmd_str
 
     @staticmethod
     def uninstall_kernel(kernel_name: str = ""):
@@ -1667,7 +1663,7 @@ class CondaEnvManager:
             return p
 
     @staticmethod
-    def create_and_init_conda_env(clean_env_name: str, python_version: str) -> None:
+    def create_and_init_conda_env(clean_env_name: str, python_version: Tuple[str]) -> None:
         """
 
 
@@ -1736,7 +1732,7 @@ class GitProjectManager:
         repo_to_add = f"git@github.com:{uname}/{repo_name}.git"
         git_cmds = ["git", "remote", "add", "origin", repo_to_add]
         with subprocess.Popen(
-            git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
+                git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
         ) as p:
             output, errors = p.communicate()
         print(output)
@@ -1762,7 +1758,7 @@ class GitProjectManager:
             f'"{new_username}"',
         ]
         with subprocess.Popen(
-            git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
+                git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
         ) as p:
             output, errors = p.communicate()
         print(output)
@@ -1787,7 +1783,7 @@ class GitProjectManager:
             f'"{new_email}"',
         ]
         with subprocess.Popen(
-            git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
+                git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
         ) as p:
             output, errors = p.communicate()
         print(output)
@@ -1800,7 +1796,7 @@ class GitProjectManager:
         dir_path = os.getcwd()
         git_cmds = ["ssh", "-T", "git@github.com"]
         with subprocess.Popen(
-            git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
+                git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
         ) as p:
             output, errors = p.communicate()
         print(output)
@@ -1813,7 +1809,7 @@ class GitProjectManager:
         dir_path = os.getcwd()
         git_cmds = ["ssh", "-T", "git@github.com"]
         with subprocess.Popen(
-            git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
+                git_cmds, stdout=subprocess.PIPE, text=True, cwd=dir_path
         ) as p:
             output, errors = p.communicate()
         print(output)
@@ -1825,9 +1821,9 @@ class LocalProjectManager:
 
     @staticmethod
     def init_current_dir_as_a_poetry_conda_project(
-        clean_env_name: str = "hello_world",
-        python_version: str = "3.9",
-        add_git: bool = False,
+            clean_env_name: str = "hello_world",
+            python_version: Tuple[str] = "3.9",
+            add_git: bool = False,
     ) -> int:
         """
 
@@ -1854,16 +1850,16 @@ class LocalProjectManager:
                 print(
                     "Make sure that you install gy if you want to add .gitignore files"
                 )
-        cur_dir = PoetryProjectManager.get_pyproject_toml(os.getcwd()).as_posix()
+        pyproject_toml_path = PoetryProjectManager.get_pyproject_toml(os.getcwd()).as_posix()
         print("Now running add_notebook_ipykernel_dependencies_to_pypoetry")
         rc = PoetryProjectManager.add_notebook_ipykernel_dependencies_to_pypoetry(
-            clean_env_name, cur_dir
+            clean_env_name, Path(pyproject_toml_path).parent.as_posix()
         )
         return rc
 
     @staticmethod
     def create_init_link_conda_env_to_existing_poetry_project(
-        clean_env_name: str = "hello_world", python_version: str = "3.9"
+            clean_env_name: str = "hello_world", python_version: str = "3.9"
     ):
         """
 
@@ -1884,56 +1880,44 @@ class LocalProjectManager:
 
     @staticmethod
     def migrate_requirements_to_pypoetry_toml(
-        poetry_proj_conda_env_name: str,
-                                              src_requirements_txt: str = None,
-                                              dest_pyproject_toml: str = None,
-                                              try_pinned_versions: bool = False,
-        warn_before_add=True,
+            poetry_proj_conda_env_name: str,
+            src_path_to_reqs: str = None,
+            dest_path_to_pyproject_toml: str = None,
+            try_pinned_versions: bool = False,
+            warn_before_add=True,
     ):
         """
 
 
         :param poetry_proj_conda_env_name:
         :type poetry_proj_conda_env_name: str
-        :param src_requirements_txt:  (Default value = None)
-        :type src_requirements_txt: str
-        :param dest_pyproject_toml:  (Default value = None)
-        :type dest_pyproject_toml: str
+        :param src_path_to_reqs:  (Default value = None)
+        :type src_path_to_reqs: str
+        :param dest_path_to_pyproject_toml:  (Default value = None)
+        :type dest_path_to_pyproject_toml: str
         :param try_pinned_versions:  (Default value = False)
         :type try_pinned_versions: bool
         :param warn_before_add:  (Default value = True)
 
         """
         cur_dir = Path(".").resolve()
-        if src_requirements_txt is None:
-            reqs_dir = cur_dir
+        if src_path_to_reqs is None:
             requirements_txt_name = "requirements.txt"
+            path_to_reqs = cur_dir.joinpath(requirements_txt_name)
         else:
-            path_to_reqs = Path(src_requirements_txt).resolve()
-            reqs_dir = path_to_reqs.parent
-            requirements_txt_name = path_to_reqs.name
+            path_to_reqs = Path(src_path_to_reqs)
+        assert path_to_reqs.exists()
+        path_to_reqs = path_to_reqs.resolve()
 
-        if dest_pyproject_toml is None:
+        if dest_path_to_pyproject_toml is None:
             dir_containing_pyproject_toml = cur_dir.as_posix()
         else:
-            dir_containing_pyproject_toml = Path(dest_pyproject_toml).parent.as_posix()
+            dir_containing_pyproject_toml = Path(dest_path_to_pyproject_toml).parent.as_posix()
 
-        try:
-            (
-                rc,
-                path_to_requirements_txt,
-            ) = LocalProjectManager.get_requirements_txt_path(
-                requirements_directory=reqs_dir,
-                requirements_txt_name=requirements_txt_name,
-            )
-            assert rc == 0
-        except Exception as e:
-            print("Unable to find requirements txt file to migrate")
-            raise e
         PoetryProjectManager.add_poetry_package_from_requirements_txt(
             dir_containing_pyproject_toml=dir_containing_pyproject_toml,
             poetry_proj_conda_env_name=poetry_proj_conda_env_name,
-            path_to_requirements_txt=path_to_requirements_txt,
+            path_to_requirements_txt=path_to_reqs.as_posix(),
             try_pinned_versions=try_pinned_versions,
             warn_before_add=warn_before_add,
         )
@@ -1941,10 +1925,10 @@ class LocalProjectManager:
 
     @staticmethod
     def migrate_pyproject_toml_to_pyproject_toml(
-        poetry_proj_conda_env_name: str,
-                                                 src_pyproject_toml: str = None,
-                                                 dest_pyproject_toml: str = None,
-        warn_before_add: bool = True,
+            poetry_proj_conda_env_name: str,
+            src_pyproject_toml: str = None,
+            dest_pyproject_toml: str = None,
+            warn_before_add: bool = True,
     ):
         """
 
@@ -1966,6 +1950,7 @@ class LocalProjectManager:
         )
         dest_pyproject_toml_dir = Path(dest_pyproject_toml).parent.as_posix()
         for dependency_name, dependency_val in dependencies.items():
+            # TODO: Make this into a method
             dep_str = f"{dependency_name}"
             if dep_str.lower() != "python":
                 if warn_before_add:
@@ -1999,7 +1984,7 @@ class LocalProjectManager:
 
     @staticmethod
     def get_requirements_txt_path(
-        requirements_directory: Path = None, requirements_txt_name: str = None
+            requirements_directory: Path = None, requirements_txt_name: str = None
     ):
         """
 
