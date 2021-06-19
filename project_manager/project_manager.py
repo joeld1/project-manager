@@ -4,6 +4,7 @@ import platform
 import re
 import subprocess
 import sys
+from collections import defaultdict, deque
 from functools import reduce
 from os import PathLike
 from pathlib import Path, PosixPath
@@ -1007,18 +1008,21 @@ class CommonPSCommands:
 
         """
         # TODO: This might not work if a dependency spans multiple lines
-        toml_dict = {}
-        save_lines = False
+        toml_dict = defaultdict(lambda: {})
+        all_dicts = deque()
         with open(path_to_toml, "r") as f:
             all_lines = f.readlines()
             for i, l in enumerate(all_lines):
+                is_section = ('[' in l) and (']' in l) and ('=' not in l)
+                if is_section:
+                    cur_section_name = l.replace('[','').replace(']','').strip()
+                    cur_dict = toml_dict[cur_section_name]
+                else:
+                    cur_dict = all_dicts.pop()
                 cur_line = l.strip()
-                start_line_found = start_line in cur_line
-                if start_line_found:
-                    save_lines = True
-                if (not cur_line) and save_lines:
-                    save_lines = False
-                if (cur_line and save_lines) and (not start_line_found):
+                if is_section:
+                    all_dicts.append(cur_dict)
+                elif (not is_section) and cur_line:
                     print(cur_line)
                     key, *value = cur_line.split(
                         "="
@@ -1029,7 +1033,14 @@ class CommonPSCommands:
                         pass
                     else:
                         value = value.replace('"', "").strip()
-                    toml_dict[key] = value
+
+                    cur_dict[key] = value
+                    all_dicts.append(cur_dict)
+                else:
+                    pass
+        if start_line:
+            dict_to_return = toml_dict[start_line].copy()
+            return dict_to_return
         return toml_dict
 
     @staticmethod
@@ -2070,6 +2081,7 @@ class SublimeBuildConfigGenerator:
                 build_config_name
             )
         )
+        print(sublime_config_filepath)
         with open(sublime_config_filepath, "w") as f:
             f.write(json.dumps(sublime_build_config_file_contents, indent=4))
 
