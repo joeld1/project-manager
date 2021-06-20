@@ -2089,7 +2089,7 @@ class LocalProjectManager:
         return rc, path_to_requirements_txt
 
     @staticmethod
-    def create_conda_env_from_existing_pyproject_toml(pyproject_toml_path: str):
+    def create_conda_env_for_existing_pyproject_toml(pyproject_toml_path: str):
         """
         This creates a conda env for a pre-existing pyproject.toml file. This function should be used if one is interested
         in using conda instead of .venv for a virtual environment.
