@@ -11,6 +11,9 @@ from pathlib import Path, PosixPath
 from subprocess import Popen
 from typing import Tuple, Dict, List, Optional, Union
 
+from poetry.core.semver import parse_single_constraint, VersionUnion
+
+VersionUnion
 try:
     import gy
 except Exception as e:
@@ -879,7 +882,7 @@ class PoetryProjectManager:
             assert rc == 0
         except Exception as e:
             print(e)
-            print("Unable to add notebook")
+            print("Unable to add notebook or ipykernel")
             rc = 1
 
         return rc
@@ -1015,7 +1018,7 @@ class CommonPSCommands:
             for i, l in enumerate(all_lines):
                 is_section = ('[' in l) and (']' in l) and ('=' not in l)
                 if is_section:
-                    cur_section_name = l.replace('[','').replace(']','').strip()
+                    cur_section_name = l.replace('[', '').replace(']', '').strip()
                     cur_dict = toml_dict[cur_section_name]
                 else:
                     cur_dict = all_dicts.pop()
@@ -1289,12 +1292,12 @@ class CondaEnvManager:
         kernel_names, _ = CondaEnvManager.get_kernel_specs()
         conda_names, _ = CondaEnvManager.get_conda_envs()
 
-        kernel_exists = clean_proj_name in kernel_names
-        conda_env_exists = clean_proj_name in conda_names
+        kernel_name_taken = clean_proj_name in kernel_names
+        conda_name_taken = clean_proj_name in conda_names
         if both:
-            return (not conda_env_exists) and (not kernel_exists)
+            return (not conda_name_taken) and (not kernel_name_taken)
         else:
-            return (not conda_env_exists), (not kernel_exists)
+            return (not conda_name_taken), (not kernel_name_taken)
 
     @staticmethod
     def get_path_to_conda_env(env_name: str) -> str:
@@ -1360,7 +1363,7 @@ class CondaEnvManager:
 
         """
         yes = CommonPSCommands.echo_yes(True)
-        cmd = yes + "conda install notebook ipykernel"
+        cmd = yes + "conda install notebook ipykernel"  # TODO: Don't install, use poetry add
         rc = CommonPSCommands.chain_and_execute_commands(
             [act_env_str, cmd], *args, **kwargs
         )
@@ -1413,7 +1416,66 @@ class CondaEnvManager:
         return rc
 
     @staticmethod
-    def create_conda_env(env_name: str, python_version: Tuple[str]) -> int:
+    def get_available_conda_versions():
+        """
+
+        Returns a dict of python versions that are available for Conda:
+        the keys are the python versions
+        the values are tuples corresponding to the Name, Version, Build, and Channel
+        :return:
+        """
+        args = ["conda", "search", "python"]
+        p = CommonPSCommands.run_command(args, text=True, return_process=True)
+        output, errors = p.communicate()
+        versions_available_ls = list(map(lambda x: x.strip().split(), output.splitlines()[2::]))
+        versions_available = defaultdict(list)
+        for v in versions_available_ls:
+            cur_version = v[1]
+            versions_available[cur_version].append(tuple(v))
+        return versions_available
+
+    @staticmethod
+    def get_suitable_python_versions_for_conda(python_version: str):
+        """
+        Returns a dict of available conda python interpreter versions that meet the python_version contraint passed in
+
+        :param python_version:
+        :return:
+        """
+        parsed_pyproject_toml_python_version = parse_single_constraint(python_version)
+        available_versions = CondaEnvManager.get_available_conda_versions()
+        parsed_versions = {pv: parse_single_constraint(pv) for pv in available_versions.keys()}
+        filtered_versions = {}
+        for conda_version, parsed_conda_version in parsed_versions.items():
+            if parsed_pyproject_toml_python_version.allows(parsed_conda_version):
+                filtered_versions[conda_version] = parsed_conda_version
+        return filtered_versions
+
+    @staticmethod
+    def get_python_version_for_conda(python_version: str):
+        """
+        This returns a str that specifies the python version to use for a new conda python environment
+        The return str must start with 'python='
+
+        :param python_version:
+        :return:
+        """
+        if ("^" in python_version) or ("~" in python_version) or ("*" in python_version):
+            filtered_versions = CondaEnvManager.get_suitable_python_versions_for_conda(python_version)
+            python_version_new = ""
+            if ("^" in python_version):
+                python_version_new = list(filtered_versions.keys())[-1]
+            elif ("~" in python_version):
+                python_version_new = list(filtered_versions.keys())[0]
+            elif ("*" in python_version):
+                python_version_new = list(filtered_versions.keys())[-1]
+            python_version_str = f"python={python_version_new}"
+        else:
+            python_version_str = f"python={python_version}"
+        return python_version_str
+
+    @staticmethod
+    def create_conda_env(env_name: str, python_version: str) -> int:
         """
 
 
@@ -1425,7 +1487,7 @@ class CondaEnvManager:
 
         """
         p0 = CommonPSCommands.echo_yes(return_cmd=False)
-        python_version_str = f"python={python_version}"
+        python_version_str = CondaEnvManager.get_python_version_for_conda(python_version)
         args = ["conda", "create", "-n", env_name, python_version_str]
         rc = CommonPSCommands.run_command(args, stdin=p0.stdout, text=True)
         return rc
@@ -1445,7 +1507,7 @@ class CondaEnvManager:
         assert rc == 0
         rc = CondaEnvManager.upgrade_pip(act_env)
         assert rc == 0
-        rc = CondaEnvManager.install_ipykernel(act_env)
+        rc = CondaEnvManager.install_ipykernel(act_env)  # TODO: Don't install, use poetry add
         assert rc == 0
         rc = CondaEnvManager.add_conda_forge_priority(act_env)
         assert rc == 0
@@ -1674,7 +1736,7 @@ class CondaEnvManager:
             return p
 
     @staticmethod
-    def create_and_init_conda_env(clean_env_name: str, python_version: Tuple[str]) -> None:
+    def create_and_init_conda_env(clean_env_name: str, python_version: str) -> None:
         """
 
 
@@ -1833,7 +1895,7 @@ class LocalProjectManager:
     @staticmethod
     def init_current_dir_as_a_poetry_conda_project(
             clean_env_name: str = "hello_world",
-            python_version: Tuple[str] = "3.9",
+            python_version: str = "3.9",
             add_git: bool = False,
     ) -> int:
         """
@@ -1887,7 +1949,7 @@ class LocalProjectManager:
         rc = PoetryProjectManager.add_notebook_ipykernel_dependencies_to_pypoetry(
             clean_env_name, cur_dir
         )
-        return 0
+        return rc
 
     @staticmethod
     def migrate_requirements_to_pypoetry_toml(
@@ -2025,6 +2087,32 @@ class LocalProjectManager:
             print("There's no requirements file to add! Returning")
             rc = 1
         return rc, path_to_requirements_txt
+
+    @staticmethod
+    def create_conda_env_from_existing_pyproject_toml(pyproject_toml_path: str):
+        """
+        This creates a conda env for a pre-existing pyproject.toml file. This function should be used if one is interested
+        in using conda instead of .venv for a virtual environment.
+
+        :param str pyproject_toml_path:
+        :return:
+        """
+        old_path = os.getcwd()
+        pyproject_toml_path = Path(pyproject_toml_path).resolve()
+        assert pyproject_toml_path.exists()
+        os.chdir(pyproject_toml_path.parent)  # change dir to root folder; assume poetry.toml, poetry.lock are adjacent
+        toml_dict = CommonPSCommands.read_toml(pyproject_toml_path, start_line="")
+        project_name = toml_dict.get('tool.poetry', {}).get('name', {})
+
+        # Assume we want to register kernel
+        conda_env_name_available = CondaEnvManager.conda_and_kernel_name_available(clean_proj_name=project_name,
+                                                                                   both=True)
+        python_version = toml_dict.get('tool.poetry.dependencies', {}).get('python', {})
+        assert conda_env_name_available and python_version
+        rc = LocalProjectManager.create_init_link_conda_env_to_existing_poetry_project(clean_env_name=project_name,
+                                                                                       python_version=python_version)
+        os.chdir(old_path) # Go back to old dir
+        return rc
 
 
 class SublimeBuildConfigGenerator:
