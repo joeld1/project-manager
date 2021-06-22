@@ -9,16 +9,26 @@ from functools import reduce
 from os import PathLike
 from pathlib import Path, PosixPath
 from subprocess import Popen
-from typing import Tuple, Dict, List, Optional, Union
+from typing import Dict, List, Union
 
-from poetry.core.semver import parse_single_constraint, VersionUnion
 
-VersionUnion
-try:
-    import gy
-except Exception as e:
-    print("Manually install optional dependency")
-    print(e)
+def import_optional_dependency(object_name: str):
+    """
+    This method imports optional dependencies, an exception is raised if the module doesn't exist
+    :param object_name:
+    :return:
+    """
+    # TODO: Implement importlib
+    if object_name == "gy":
+        global gy
+    elif object_name == "parse_single_constraint":
+        global parse_single_constraint
+    try:
+        mod_to_return = globals().get(object_name)
+    except Exception as e:
+        print(f"Manually install module/package containing {object_name}!")
+        raise e
+    return mod_to_return
 
 
 def convert_camel_to_snakecase(camel_input):
@@ -1442,6 +1452,7 @@ class CondaEnvManager:
         :param python_version:
         :return:
         """
+        parse_single_constraint = import_optional_dependency('parse_single_constraint')
         parsed_pyproject_toml_python_version = parse_single_constraint(python_version)
         available_versions = CondaEnvManager.get_available_conda_versions()
         parsed_versions = {pv: parse_single_constraint(pv) for pv in available_versions.keys()}
@@ -2111,7 +2122,7 @@ class LocalProjectManager:
         assert conda_env_name_available and python_version
         rc = LocalProjectManager.create_init_link_conda_env_to_existing_poetry_project(clean_env_name=project_name,
                                                                                        python_version=python_version)
-        os.chdir(old_path) # Go back to old dir
+        os.chdir(old_path)  # Go back to old dir
         return rc
 
 
