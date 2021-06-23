@@ -693,7 +693,7 @@ class PoetryProjectManager:
             assert proj_path.exists()
             assert proj_path.is_dir()
             os.chdir(proj_path.as_posix())
-        except Exception as e:
+        except Exception:
             print(
                 "Unable to cd into folder since it doesn't exist! Will create proj in current directory"
             )
@@ -1146,7 +1146,7 @@ class CommonPSCommands:
         try:
             relative_path = abs_path_1.relative_to(abs_path_2)
             return relative_path.as_posix()
-        except ValueError as e:
+        except ValueError:
             print(
                 "Relating directories using dot notation from first_path -> second_path"
             )
@@ -1557,7 +1557,7 @@ class CondaEnvManager:
         try:
             kernel_names, _ = CondaEnvManager.get_kernel_specs()
             assert kernel_name in kernel_names
-        except Exception as e:
+        except Exception:
             print(f"Kernel {kernel_name!r} does not exist!")
         kernel_cmd = ["jupyter", "kernelspec", "uninstall", kernel_name, "-y"]
         y = CommonPSCommands.echo_yes(return_cmd=True)
@@ -1582,7 +1582,7 @@ class CondaEnvManager:
         try:
             kernel_names, _ = CondaEnvManager.get_conda_envs()
             assert conda_env_name in kernel_names
-        except Exception as e:
+        except Exception:
             print(f"Conda {conda_env_name!r} does not exist!")
         conda_cmd = ["conda", "env", "remove", "-n", conda_env_name]
         rc = CommonPSCommands.run_command(conda_cmd, text=True)
@@ -1720,7 +1720,7 @@ class CondaEnvManager:
         conda_sh = CondaEnvManager.get_conda_sh()
 
         source_conda = ["source", conda_sh]
-        source_conda_str = " ".join(source_conda)
+        " ".join(source_conda)
 
         conda_act = ["conda", "activate", env_name]
         conda_act_str = " ".join(conda_act)
@@ -2008,14 +2008,60 @@ class LocalProjectManager:
         return 0
 
     @staticmethod
+    def iterate_and_add_dependencies(toml_file_dependencies_section_dict, dest_pyproject_toml_dir: str,
+                                     poetry_proj_conda_env_name: str, toml_section_type: str = "",
+                                     warn_before_add: bool = True):
+        if toml_section_type == "dev":
+            toml_section_type = "development"
+            options = "-D"
+        else:
+            toml_section_type = "required"
+            options = ""
+        for dependency_name, dependency_val in toml_file_dependencies_section_dict.items():
+            dep_str = f"{dependency_name}"
+            if dep_str.lower() != "python":
+                if warn_before_add:
+                    q0 = "(i.e. 'poetry add {...}')"
+                    q1 = f"Enter [q] to break, [c] to add unpinned {toml_section_type} dependency, [a] to input your own dependency {q0}, [p] to pass"
+                    resp = input(
+                        f"Would you like to add the following unpinned {toml_section_type} dependency ({dep_str!r}) (it's pinned version is {dependency_val!r}) to {poetry_proj_conda_env_name!r}?\n{q1}"
+                    )
+                else:
+                    resp = "c"
+                if resp.lower() == "q":
+                    print("Now raising Exception to exit")
+                    raise Exception
+                elif resp.lower() in ["c", "a"]:
+                    if resp.lower() == "a":
+                        dep_str = input(
+                            "Input your own dependency to fill in 'poetry add {...}' "
+                        )
+                        options = ""
+                    try:
+                        PoetryProjectManager.add_dependency_to_pyproject_toml(
+                            dir_containing_pyproject_toml=dest_pyproject_toml_dir,
+                            poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                            dependency=dep_str,
+                            wrap_in_quotes=False,
+                            options=options,
+                        )
+                    except Exception as e:
+                        print("See output to identify un-addable dependency")
+                        print(e)
+                else:
+                    continue
+
+
+    @staticmethod
     def migrate_pyproject_toml_to_pyproject_toml(
             poetry_proj_conda_env_name: str,
             src_pyproject_toml: str = None,
             dest_pyproject_toml: str = None,
             warn_before_add: bool = True,
-    ):
+            dependency_section_name: str = ""):
         """
 
+        if dependency_section_name is empty, read both required and dev dependencies from .toml file
 
         :param poetry_proj_conda_env_name:
         :type poetry_proj_conda_env_name: str
@@ -2029,42 +2075,43 @@ class LocalProjectManager:
         """
 
         assert Path(src_pyproject_toml).exists() and Path(dest_pyproject_toml).exists()
-        dependencies = CommonPSCommands.read_toml(
-            src_pyproject_toml, "tool.poetry.dependencies"
-        )
+
+        dependencies = CommonPSCommands.read_toml(src_pyproject_toml, dependency_section_name)
+        if dependency_section_name:
+            dep_dict = {}
+            dep_dict[dependency_section_name] = dependencies.copy()
+            dependencies = dep_dict.copy()
         dest_pyproject_toml_dir = Path(dest_pyproject_toml).parent.as_posix()
-        for dependency_name, dependency_val in dependencies.items():
-            # TODO: Make this into a method
-            dep_str = f"{dependency_name}"
-            if dep_str.lower() != "python":
-                if warn_before_add:
-                    q1 = "Enter [q] to break, [c] to add unpinned dependency, [a] to input your own dependency, [p] to pass"
-                    resp = input(
-                        f"Would you like to add the following unpinned dependency ({dep_str!r}) (it's pinned version is {dependency_val!r})to {poetry_proj_conda_env_name!r}?\n{q1}"
-                    )
-                else:
-                    resp = "c"
-                if resp.lower() == "q":
-                    print("Now raising Exception to exit")
-                    raise Exception
-                elif resp.lower() in ["c", "a"]:
-                    if resp.lower() == "a":
-                        dep_str = input(
-                            "Input your own dependency to fill in 'poetry add {...}' "
-                        )
-                    try:
-                        PoetryProjectManager.add_dependency_to_pyproject_toml(
-                            dir_containing_pyproject_toml=dest_pyproject_toml_dir,
-                            poetry_proj_conda_env_name=poetry_proj_conda_env_name,
-                            dependency=dep_str,
-                            wrap_in_quotes=False,
-                        )
-                    except Exception as e:
-                        print("See output to identify un-addable dependency")
-                        print(e)
-                else:
-                    continue
+        dev_dependency_section_specified = ("dev-dependencies" in dependency_section_name)
+
+        if dev_dependency_section_specified:
+            dependency_type = "dev"
+        elif (not dev_dependency_section_specified) and (dependency_section_name != ""):
+            dependency_type = ""
+        else:
+            dependency_type = "all"
+
+        if (dependency_type == "all") or dev_dependency_section_specified:
+            toml_section_type = "dev"
+            dev_dependencies = dependencies.get('tool.poetry.dev-dependencies')
+            LocalProjectManager.iterate_and_add_dependencies(toml_file_dependencies_section_dict=dev_dependencies,
+                                                             toml_section_type=toml_section_type,
+                                                             dest_pyproject_toml_dir=dest_pyproject_toml_dir,
+                                                             poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                                                             warn_before_add=warn_before_add)
+        if (dependency_type == "all") or (not dev_dependency_section_specified):
+            toml_section_type = ""
+            if dependency_section_name:
+                dependencies_req = dependencies.get(dependency_section_name)
+            else:
+                dependencies_req = dependencies.get("tool.poetry.dependencies")
+            LocalProjectManager.iterate_and_add_dependencies(toml_file_dependencies_section_dict=dependencies_req,
+                                                             toml_section_type=toml_section_type,
+                                                             dest_pyproject_toml_dir=dest_pyproject_toml_dir,
+                                                             poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                                                             warn_before_add=warn_before_add)
         return 0
+
 
     @staticmethod
     def get_requirements_txt_path(

@@ -5,9 +5,19 @@ from pathlib import Path
 
 import pytest
 
-from project_manager import CondaEnvManager, CommonPSCommands, ProjectManager, PoetryProjectManager, GitProjectManager, \
-    LocalProjectManager, SublimeBuildConfigGenerator
-from project_manager.project_manager import convert_camel_to_snakecase, import_optional_dependency
+from project_manager import (
+    CommonPSCommands,
+    CondaEnvManager,
+    GitProjectManager,
+    LocalProjectManager,
+    PoetryProjectManager,
+    ProjectManager,
+    SublimeBuildConfigGenerator,
+)
+from project_manager.project_manager import (
+    convert_camel_to_snakecase,
+    import_optional_dependency,
+)
 
 
 @pytest.fixture
@@ -364,11 +374,30 @@ class TestLocalProjectManager:
                                                    warn_before_add=True):
         rc = local_project_manager.migrate_requirements_to_pypoetry_toml(src_path_to_reqs=src_path_to_reqs,
                                                                          dest_path_to_pyproject_toml=dest_path_to_pyproject_toml,
-                                                                         poetry_proj_conda_env_name=poetry_proj_conda_env_name)
+                                                                         poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                                                                         try_pinned_versions=try_pinned_versions,
+                                                                         warn_before_add=warn_before_add)
         assert rc == 0
 
-    def test_migrate_pypoetry_toml_to_pypoetry_toml(self):
-        assert False
+    # def test_migrate_pyproject_toml_to_pyproject_toml(self,local_project_manager,
+    #                                                   poetry_proj_conda_env_name,
+    #                                                   src_pyproject_toml,
+    #                                                   dest_pyproject_toml,
+    #                                                   warn_before_add,
+    #                                                   dependency_section_name):
+    def test_migrate_pyproject_toml_to_pyproject_toml(self, local_project_manager):
+        poetry_proj_conda_env_name = "project_manager"
+        src_pyproject_toml = r"foobar/pyproject.toml"
+        dest_pyproject_toml = r"pyproject.toml"
+        warn_before_add = True
+        dependency_section_name = "tool.poetry.dev-dependencies"
+
+        rc = local_project_manager.migrate_pyproject_toml_to_pyproject_toml(poetry_proj_conda_env_name,
+                                                                            src_pyproject_toml,
+                                                                            dest_pyproject_toml,
+                                                                            warn_before_add,
+                                                                            dependency_section_name)
+        assert rc == 0
 
     def test_get_requirements_txt_path(self):
         assert False

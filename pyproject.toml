@@ -8,8 +8,18 @@ authors = ["JD <10216562+joeld1@users.noreply.github.com>"]
 python = "^3.9"
 gy = "^1.0.2"
 poetry-core = "^1.0.3"
+meta-package-manager = "^4.1.0"
+notebooktoall = "^0.2.3"
 
 [tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+pytest-cov = "^2.12.1"
+autoflake = "^1.4"
+flake8 = "^3.9.2"
+mypy = "^0.910"
+isort = "^5.9.1"
+pre-commit = "^2.13.0"
+black = "^21.6b0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
