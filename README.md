@@ -1,12 +1,12 @@
 project_manager
 ==
-A conda poetry project manager - replacing .sh/.bat scripts with Python 
+A conda poetry project manager - replacing .sh/.bat scripts with Python
 --
 A collection of actions that allow you to use subprocess to create/manage conda envs, poetry projects, register ipykernels, and export Sublime Text 3 Python Build configuration settings.
 
 Things are actively being refactored and haven't been documented and annotated. As such, method names are long and verbose for the meantime.
 
-This package was created in order to practice replacing shell/.bat scripts with Python, and to allow me to use conda to install packages (via poetry) not available for computers with a Mac M1 chip. The Sublime Text 3 build config generator was created in order to be able to execute Python code with little performance issues I've been experiencing with my IDE. 
+This package was created in order to practice replacing shell/.bat scripts with Python, and to allow me to use conda to install packages (via poetry) not available for computers with a Mac M1 chip. The Sublime Text 3 build config generator was created in order to be able to execute Python code with little performance issues I've been experiencing with my IDE.
 
 For some methods found in this module to work you need to have the following:
 
@@ -17,15 +17,21 @@ For some methods found in this module to work you need to have the following:
 - Optional
     - [gy](https://github.com/cls1991/gy)
         - Used for creating `.gitignore` files
-    - [stringcase](https://github.com/okunishinishi/python-stringcase)
-        - used to convert text to snake_case
-    - [toml](https://github.com/uiri/toml)
-        - as a backup for parsing `.toml` files
-    
-## Note 
-Some method names might undergo name changes as documentation is added.  
+
+## Note
+Some method names might undergo name changes as documentation is added.
 
 Note many of these commands were run on a Mac. Do modify the snippets as needed to best suit your case, and raise any issues
+
+
+
+### Installation Using Poetry
+
+`poetry add git+https://github.com/joeld1/project-manager.git#main`
+
+**Note: If you're using poetry 1.2.0a1, make sure to set the following poetry config setting**
+
+`experimental.new-installer = true`
 
 # Examples
 Create a Conda Environment and Register Kernel
@@ -38,7 +44,7 @@ import sys
 from project_manager import CondaEnvManager as CEM
 
 # Don't add illegal characters or spaces
-conda_env_name = "hello_world" 
+conda_env_name = "hello_world"
 
 # Version of python for conda env
 python_version = "3.9"
@@ -47,11 +53,11 @@ CEM.create_and_init_conda_env(conda_env_name, python_version)
 
 sys.exit()
 ```
-Execute `poetry init --no-interaction` 
+Execute `poetry init --no-interaction`
 ---
 Running the following command activates a conda env and runs `poetry init --no-interaction`:
 
-```python    
+```python
 import sys
 
 from project_manager import PoetryProjectManager as PPM
@@ -70,7 +76,7 @@ sys.exit()
 
 Catch a `ModuleNotFoundError` and add missing module to `pypoetry.toml`
 ---
-The following lines of code can help you add a missing module to your `pyproject.toml` file. This only works if the py script you are running is already part of a poetry project folder, and if a `poetry.toml` file is located in the directory of any parents of the .py file containing the below block of code. If a `pyproject.toml` isn't found in any parents it'll fail. 
+The following lines of code can help you add a missing module to your `pyproject.toml` file. This only works if the py script you are running is already part of a poetry project folder, and if a `poetry.toml` file is located in the directory of any parents of the .py file containing the below block of code. If a `pyproject.toml` isn't found in any parents it'll fail.
 
 ```python
 import sys
@@ -86,7 +92,7 @@ sys.exit()
 ```
 
 Uninstall a conda env
---- 
+---
 ```python
 import sys
 
@@ -100,7 +106,7 @@ assert rc == 0
 sys.exit()
 ```
 Uninstall a jupyter kernel
---- 
+---
 ```python
 import sys
 
@@ -114,7 +120,7 @@ assert rc == 0
 sys.exit()
 ```
 Uninstall a jupyter kernel and conda env in 1 go (different names too)
---- 
+---
 
 ```python
 import sys
@@ -134,14 +140,14 @@ CEM.uninstall_conda_and_kernel(conda_env_name="hello_world",kernel_name="some_ot
 sys.exit()
 ```
 Executing `git init`
---- 
+---
 ```python
 import sys
 
 from project_manager import GitProjectManager as GPM
 
 # None for current directory
-path_to_dir = None 
+path_to_dir = None
 
 # Otherwise specify the folder path
 path_to_dir = "path/to_some/folder"
@@ -174,7 +180,7 @@ Create a Conda Env, Register Jupyter Kernel, and Init Current Directory as a Poe
 ---
 Running the following command, creates a Python 3.9 conda env, registers the jupyter kernel, and inits the current directory as a poetry project:
 
-    
+
 ```python
 import sys
 
@@ -198,7 +204,7 @@ import sys
 from project_manager import SublimeBuildConfigGenerator as SBCG
 
 path_to_python_bin = r"/opt/homebrew/anaconda3/envs/hello_world/bin"
-build_config_name = "hello_world" 
+build_config_name = "hello_world"
 
 SBCG.export_sublime_text_build_config(path_to_python_bin, build_config_name)
 
@@ -233,4 +239,3 @@ for Mac users, the config settings will be found in:
 for PC users, the config settings will be found in:
 
     C:\Users\{YOUR_USERNAME}\AppData\Roaming\Sublime Text 3\Packages\User\{build_config_name}.sublime-build
-

@@ -19,15 +19,13 @@ def import_optional_dependency(object_name: str):
     :return:
     """
     # TODO: Implement importlib
+    mod_to_return = None
     if object_name == "gy":
-        global gy
+        import gy
+        mod_to_return = gy
     elif object_name == "parse_single_constraint":
-        global parse_single_constraint
-    try:
-        mod_to_return = globals().get(object_name)
-    except Exception as e:
-        print(f"Manually install module/package containing {object_name}!")
-        raise e
+        from poetry.core.semver import parse_single_constraint
+        mod_to_return = parse_single_constraint
     return mod_to_return
 
 
@@ -2051,7 +2049,6 @@ class LocalProjectManager:
                 else:
                     continue
 
-
     @staticmethod
     def migrate_pyproject_toml_to_pyproject_toml(
             poetry_proj_conda_env_name: str,
@@ -2111,7 +2108,6 @@ class LocalProjectManager:
                                                              poetry_proj_conda_env_name=poetry_proj_conda_env_name,
                                                              warn_before_add=warn_before_add)
         return 0
-
 
     @staticmethod
     def get_requirements_txt_path(
