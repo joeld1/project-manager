@@ -203,7 +203,7 @@ class PoetryProjectManager:
     def get_pyproject_toml(path: str) -> PosixPath:
         """
         This searches for a pyproject.toml file that is a sibling of the given path. It recursively searches parent
-        paths for a parent that contains a poetry.toml file.
+        paths for a parent that contains a poetry.toml file, and returns the final parent that contains a .toml file.
 
         :param path:
         :type path: str
@@ -1932,7 +1932,7 @@ class LocalProjectManager:
                 print(
                     "Make sure that you install gy if you want to add .gitignore files"
                 )
-        pyproject_toml_path = PoetryProjectManager.get_pyproject_toml(os.getcwd()).as_posix()
+        pyproject_toml_path = PoetryProjectManager.get_pyproject_toml(os.getcwd()).parent.as_posix()
         print("Now running add_notebook_ipykernel_dependencies_to_pypoetry")
         rc = PoetryProjectManager.add_notebook_ipykernel_dependencies_to_pypoetry(
             clean_env_name, Path(pyproject_toml_path).parent.as_posix()
@@ -1945,6 +1945,7 @@ class LocalProjectManager:
     ):
         """
 
+        This assumes that the current directory is the root folder of the poetry project
 
         :param clean_env_name:  (Default value = "hello_world")
         :type clean_env_name: str
@@ -1954,10 +1955,8 @@ class LocalProjectManager:
         """
         CondaEnvManager.create_and_init_conda_env(clean_env_name, python_version)
         PoetryProjectManager.link_poetry_proj_with_conda_env(clean_env_name)
-        cur_dir = PoetryProjectManager.get_pyproject_toml(os.getcwd()).as_posix()
-        rc = PoetryProjectManager.add_notebook_ipykernel_dependencies_to_pypoetry(
-            clean_env_name, cur_dir
-        )
+        cur_dir = os.getcwd()
+        rc = PoetryProjectManager.add_notebook_ipykernel_dependencies_to_pypoetry(clean_env_name, cur_dir)
         return rc
 
     @staticmethod
