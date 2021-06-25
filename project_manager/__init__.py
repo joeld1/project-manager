@@ -1,19 +1,18 @@
-__version__ = '0.1.0'
+version = "0.0.0"
 
-from project_manager.project_manager import ProjectManager
-from project_manager.project_manager import PoetryProjectManager
 from project_manager.project_manager import CommonPSCommands
-from project_manager.project_manager import CondaEnvManager
-from project_manager.project_manager import GitProjectManager
-from project_manager.project_manager import LocalProjectManager
-from project_manager.project_manager import SublimeBuildConfigGenerator
-
-from project_manager.project_manager import ProjectManager as PM
-from project_manager.project_manager import PoetryProjectManager as PPM
 from project_manager.project_manager import CommonPSCommands as CPSC
+from project_manager.project_manager import CondaEnvManager
 from project_manager.project_manager import CondaEnvManager as CEM
+from project_manager.project_manager import GitProjectManager
 from project_manager.project_manager import GitProjectManager as GPM
+from project_manager.project_manager import LocalProjectManager
 from project_manager.project_manager import LocalProjectManager as LPM
+from project_manager.project_manager import PoetryProjectManager
+from project_manager.project_manager import PoetryProjectManager as PPM
+from project_manager.project_manager import ProjectManager
+from project_manager.project_manager import ProjectManager as PM
+from project_manager.project_manager import SublimeBuildConfigGenerator
 from project_manager.project_manager import SublimeBuildConfigGenerator as SBCG
 
 # Include these here to lazily access static methods
