@@ -713,3 +713,6 @@ FodyWeavers.xsd
 .history/
 ---- visualstudiocode end ----
 
+# Poetry
+poetry.toml
+poetry.lock
