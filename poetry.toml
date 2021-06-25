@@ -1,4 +1,0 @@
-[virtualenvs]
-path = "/opt/homebrew/anaconda3/envs/project_manager"
-create = false
-in-project = false
