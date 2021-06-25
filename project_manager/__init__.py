@@ -1,4 +1,4 @@
-version = "0.0.0"
+version = "0.1.0"
 
 from project_manager.project_manager import CommonPSCommands
 from project_manager.project_manager import CommonPSCommands as CPSC
