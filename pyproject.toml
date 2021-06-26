@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "project_manager"
-version = "0.0.1.dev47+c2864e4"
+version = "0.0.1.dev48+89fa649"
 description = ""
 authors = ["JD <10216562+joeld1@users.noreply.github.com>"]
 readme = "README.md"

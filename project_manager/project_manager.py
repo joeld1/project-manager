@@ -1932,10 +1932,10 @@ class LocalProjectManager:
                 print(
                     "Make sure that you install gy if you want to add .gitignore files"
                 )
-        pyproject_toml_path = PoetryProjectManager.get_pyproject_toml(os.getcwd()).parent.as_posix()
+        pyproject_toml_dir = PoetryProjectManager.get_pyproject_toml(os.getcwd()).parent.as_posix()
         print("Now running add_notebook_ipykernel_dependencies_to_pypoetry")
         rc = PoetryProjectManager.add_notebook_ipykernel_dependencies_to_pypoetry(
-            clean_env_name, Path(pyproject_toml_path).parent.as_posix()
+            clean_env_name, Path(pyproject_toml_dir).as_posix()
         )
         return rc
 
