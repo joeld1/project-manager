@@ -299,11 +299,29 @@ class PoetryProjectManager:
         return rc
 
     @staticmethod
+    def format_deps_from_reqs_txt(reqs: List[Dict[str, str]]):
+        cur_dependencies = {}
+        for r in reqs:
+            cur_name = r['name']
+            cur_line = r['line_in_reqs_txt']
+            is_pinned = r['is_pinned']
+            is_git_dependency = r['is_git_dependency']
+            if is_pinned or is_git_dependency:
+                if "==" in cur_line:
+                    l, *r = cur_line.split("==")
+                    dependency_pinned = "==" + "==".join(r)
+                else:
+                    dependency_pinned = cur_line
+                cur_dependencies[cur_name] = dependency_pinned
+            else:
+                cur_dependencies[cur_name] = ""
+        return cur_dependencies
+
+    @staticmethod
     def add_poetry_package_from_requirements_txt(
             dir_containing_pyproject_toml: str,
             poetry_proj_conda_env_name: str,
             path_to_requirements_txt: str,
-            try_pinned_versions: bool = False,
             warn_before_add=True,
     ):
         """
@@ -321,14 +339,13 @@ class PoetryProjectManager:
 
         """
         reqs = CommonPSCommands.parse_requirements_txt(path_to_requirements_txt)
-        for cur_dependency in reqs:
-            PoetryProjectManager.attempt_adding_dependency(
-                poetry_proj_conda_env_name=poetry_proj_conda_env_name,
-                dir_containing_pyproject_toml=dir_containing_pyproject_toml,
-                dependency=cur_dependency,
-                try_pinned_versions=try_pinned_versions,
-                warn_before_add=warn_before_add,
-            )
+        cur_dependencies = PoetryProjectManager.format_deps_from_reqs_txt(reqs)
+        rc = LocalProjectManager.iterate_and_add_dependencies(toml_file_dependencies_section_dict=cur_dependencies,
+                                                              dest_pyproject_toml_dir=dir_containing_pyproject_toml,
+                                                              poetry_proj_conda_env_name=poetry_proj_conda_env_name,
+                                                              toml_section_type="",
+                                                              warn_before_add=warn_before_add)
+        return rc
 
     @staticmethod
     def attempt_adding_dependency(
@@ -523,7 +540,10 @@ class PoetryProjectManager:
 
         """
         # TODO: Remove redundant add methods
-        if wrap_in_quotes:
+        has_quote = '"' in dependency
+        has_dash = "-" in dependency
+        must_wrap = (not has_quote) and has_dash
+        if wrap_in_quotes or must_wrap:
             dependency = f'"{dependency}"'  # wrap in quotes
         poetry_cmd = f"poetry add {dependency}"
         if options:
@@ -1964,7 +1984,6 @@ class LocalProjectManager:
             poetry_proj_conda_env_name: str,
             src_path_to_reqs: str = None,
             dest_path_to_pyproject_toml: str = None,
-            try_pinned_versions: bool = False,
             warn_before_add=True,
     ):
         """
@@ -1995,14 +2014,13 @@ class LocalProjectManager:
         else:
             dir_containing_pyproject_toml = Path(dest_path_to_pyproject_toml).parent.as_posix()
 
-        PoetryProjectManager.add_poetry_package_from_requirements_txt(
+        rc = PoetryProjectManager.add_poetry_package_from_requirements_txt(
             dir_containing_pyproject_toml=dir_containing_pyproject_toml,
             poetry_proj_conda_env_name=poetry_proj_conda_env_name,
             path_to_requirements_txt=path_to_reqs.as_posix(),
-            try_pinned_versions=try_pinned_versions,
             warn_before_add=warn_before_add,
         )
-        return 0
+        return rc
 
     @staticmethod
     def iterate_and_add_dependencies(toml_file_dependencies_section_dict, dest_pyproject_toml_dir: str,
@@ -2019,7 +2037,7 @@ class LocalProjectManager:
             if dep_str.lower() != "python":
                 if warn_before_add:
                     q0 = "(i.e. 'poetry add {...}')"
-                    q1 = f"Enter [q] to break, [c] to add unpinned {toml_section_type} dependency, [a] to input your own dependency {q0}, [p] to pass"
+                    q1 = f"Enter [q] to break, [c] to add unpinned {toml_section_type} dependency, [a] to input your own or manually enter the pinned dependency {q0}, [p] to pass"
                     resp = input(
                         f"Would you like to add the following unpinned {toml_section_type} dependency ({dep_str!r}) (it's pinned version is {dependency_val!r}) to {poetry_proj_conda_env_name!r}?\n{q1}"
                     )
@@ -2031,7 +2049,7 @@ class LocalProjectManager:
                 elif resp.lower() in ["c", "a"]:
                     if resp.lower() == "a":
                         dep_str = input(
-                            "Input your own dependency to fill in 'poetry add {...}' "
+                            "Input your own dependency to fill in 'poetry add {...}' and quotes as needed"
                         )
                         options = ""
                     try:
@@ -2047,6 +2065,8 @@ class LocalProjectManager:
                         print(e)
                 else:
                     continue
+        else:
+            return 0
 
     @staticmethod
     def migrate_pyproject_toml_to_pyproject_toml(
@@ -2070,7 +2090,7 @@ class LocalProjectManager:
 
         """
 
-        assert Path(src_pyproject_toml).exists() and Path(dest_pyproject_toml).exists()
+        assert Path(src_pyproject_toml).resolve().exists() and Path(dest_pyproject_toml).resolve().exists()
 
         dependencies = CommonPSCommands.read_toml(src_pyproject_toml, dependency_section_name)
         if dependency_section_name:
