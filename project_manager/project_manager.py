@@ -1053,22 +1053,21 @@ class CommonPSCommands:
                 cur_line = l.strip()
                 if is_section:
                     all_dicts.append(cur_dict)
-                elif (not is_section) and cur_line:
+                elif not is_section:
                     print(cur_line)
-                    key, *value = cur_line.split(
-                        "="
-                    )  # assuming we have simple dependencies with 1 = sign
-                    key = key.strip()
-                    value = "".join(value)
-                    if len(value) == 2:
-                        pass
-                    else:
-                        value = value.replace('"', "").strip()
+                    if cur_line:
+                        key, *value = cur_line.split(
+                            "="
+                        )  # assuming we have simple dependencies with 1 = sign
+                        key = key.strip()
+                        value = "=".join(value)
+                        if len(value) == 2:
+                            pass
+                        else:
+                            value = value.replace('"', "").strip()
 
-                    cur_dict[key] = value
+                        cur_dict[key] = value
                     all_dicts.append(cur_dict)
-                else:
-                    pass
         if start_line:
             dict_to_return = toml_dict[start_line].copy()
             return dict_to_return
