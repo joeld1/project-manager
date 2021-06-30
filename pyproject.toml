@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "project_manager"
-version = "0.0.1.dev51+c05cb98"
+version = "0.0.1.dev52+15ee317"
 description = ""
 authors = ["JD <10216562+joeld1@users.noreply.github.com>"]
 readme = "README.md"
@@ -19,7 +19,6 @@ mypy = "^0.910"
 isort = "^5.9.1"
 pre-commit = "^2.13.0"
 black = "^21.6b0"
-poetry-dynamic-versioning = "^0.13.0"
 
 [build-system]
 requires = ["poetry-core"]
