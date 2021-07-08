@@ -840,6 +840,36 @@ class PoetryProjectManager:
         return path_to_env
 
     @staticmethod
+    def get_virtual_env_name_from_poetry_toml(poetry_toml_path: str) -> str:
+        """
+
+        This gets the virtual env name by reading getting the name of the virtual env found in the poetry.toml file.
+
+        :param str poetry_toml_path:
+        :return:
+        """
+        path_to_venv = PoetryProjectManager.get_virtualenv_path_from_poetry_toml(poetry_toml_path)
+        return path_to_venv.name
+
+    @staticmethod
+    def get_virtual_env_name_from_pyproject_toml(pyproject_toml_path: str) -> str:
+        """
+
+        This opens up the neighboring poetry.toml file and identifies the virtual env name associated with the poetry project.
+
+        :param pyproject_toml_path:
+        :return:
+        """
+        dir_containing_pyproject_toml = Path(pyproject_toml_path).parent
+        try:
+            poetry_toml_path = dir_containing_pyproject_toml.joinpath("poetry.toml")
+            env_name = PoetryProjectManager.get_virtual_env_name_from_poetry_toml(poetry_toml_path)
+            return env_name
+        except Exception as e:
+            raise e
+
+
+    @staticmethod
     def get_poetry_proj_env_name_from_poetry_toml_for_py_file(
             poetry_proj_py_filepath: str,
     ):
@@ -1269,11 +1299,13 @@ class CondaEnvManager:
         return kernel_config
 
     @staticmethod
-    def verify_if_kernel_config_contains_env_path(env_name, kernel_config):
+    def verify_if_kernel_config_contains_env_path(env_name:str, kernel_config:Dict[str,Any]) -> bool:
         """
 
+        This method determines if the conda_env_name == ipykernel name and returns True or False
 
-        :param env_name:
+
+        :param str env_name:
         :param kernel_config:
 
         """
@@ -1281,7 +1313,7 @@ class CondaEnvManager:
         if argv:
             path_to_py = Path(argv[0])
             try:
-                assert env_name in path_to_py.parts
+                assert (env_name in path_to_py.parts) and (kernel_config.get('display_name','')==env_name)
                 return True
             except Exception as e:
                 print(e)
@@ -1292,11 +1324,12 @@ class CondaEnvManager:
             return False
 
     @staticmethod
-    def verify_kernel_pairing(env_name):
+    def verify_kernel_pairing(env_name:str):
         """
 
+        This determines if the ipykernel name matches the conda env name.
 
-        :param env_name:
+        :param str env_name:
 
         """
         kernel_config_path = CondaEnvManager.lookup_kernel(env_name)

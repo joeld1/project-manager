@@ -21,7 +21,8 @@ from project_manager.project_manager import (
 )
 
 PATH_TO_REQUIREMENTS_TXT: str = Path(__file__).parent.joinpath("requirements.txt").as_posix()
-PATH_TO_TOML_FILE: str = Path(__file__).parent.parent.resolve().joinpath("patches/sandboxenv/verifypm/pyproject.toml")
+PATH_TO_PYPROJECT_TOML_FILE: str = Path(__file__).parent.parent.resolve().joinpath("patches/sandboxenv/verifypm/pyproject.toml")
+PATH_TO_POETRY_TOML_FILE: str = Path(__file__).parent.parent.resolve().joinpath("poetry.toml")
 
 
 @pytest.fixture
@@ -113,7 +114,7 @@ class TestPoetryProjectManager:
         assert isinstance(cur_dependencies, dict)
 
     def test_add_poetry_package_from_requirements_txt(self, dir_containing_pyproject_toml: str = Path(
-        PATH_TO_TOML_FILE).parent.as_posix(),
+        PATH_TO_PYPROJECT_TOML_FILE).parent.as_posix(),
                                                       poetry_proj_conda_env_name: str = "verifypm",
                                                       path_to_requirements_txt: str = Path(
                                                           PATH_TO_REQUIREMENTS_TXT).as_posix(),
@@ -180,8 +181,19 @@ class TestPoetryProjectManager:
     def test_find_poetry_toml_and_get_virtual_env_path(self):
         assert False
 
-    def test_get_virtualenv_path_from_poetry_toml(self):
-        assert False
+    def test_get_virtualenv_path_from_poetry_toml(self, path_to_poetry_toml_file=PATH_TO_POETRY_TOML_FILE):
+        path_to_venv = PoetryProjectManager.get_virtualenv_path_from_poetry_toml(
+            cur_poetry_file=PATH_TO_POETRY_TOML_FILE)
+        assert isinstance(path_to_venv, Path)
+
+    def test_get_virtual_env_name_from_poetry_toml(self):
+        path_to_venv = PoetryProjectManager.get_virtualenv_path_from_poetry_toml(PATH_TO_POETRY_TOML_FILE)
+        return path_to_venv.name
+
+    def test_get_virtual_env_name_from_pyproject_toml(self, pyproject_toml_path=PATH_TO_PYPROJECT_TOML_FILE):
+        env_name = PoetryProjectManager.get_virtual_env_name_from_pyproject_toml(
+            pyproject_toml_path=pyproject_toml_path)
+        assert isinstance(env_name, str)
 
     def test_get_poetry_proj_env_name_from_poetry_toml_for_py_file(self):
         assert False
@@ -207,7 +219,7 @@ class TestCommonPSCommands:
         assert False
 
     def test_read_toml(self, common_ps_commands):
-        pyproject_toml_path = PATH_TO_TOML_FILE
+        pyproject_toml_path = PATH_TO_PYPROJECT_TOML_FILE
         toml_dict = common_ps_commands.read_toml(pyproject_toml_path, start_line="")
         assert toml_dict
 
@@ -281,10 +293,13 @@ class TestCondaEnvManager:
 
     @pytest.mark.parametrize(['env_name', 'expected_raise', 'expected_output'],
                              [pytest.param('base', pytest.raises(AssertionError), None),
-                              pytest.param('py38', does_not_raise(), Path)])
-    def test_verify_kernel_pairing(self, conda_env_manager, env_name, expected_raise, expected_output):
-        conda_env_manager.verify_kernel_pairing(env_name)
-        assert False
+                              pytest.param('py38', does_not_raise(), True)])
+    def test_verify_kernel_pairing(self, env_name, expected_raise, expected_output):
+        with expected_raise:
+            is_paired = CondaEnvManager.verify_kernel_pairing(env_name)
+        if expected_output is not None:
+            assert expected_output == is_paired
+            assert isinstance(is_paired, bool)
 
     def test_verify_if_kernel_config_contains_env_path(self):
         assert False
@@ -398,7 +413,7 @@ class TestLocalProjectManager:
 
     def test_migrate_requirements_to_pypoetry_toml(self, poetry_proj_conda_env_name: str = 'verifypm',
                                                    src_path_to_reqs: str = PATH_TO_REQUIREMENTS_TXT,
-                                                   dest_path_to_pyproject_toml: str = PATH_TO_TOML_FILE,
+                                                   dest_path_to_pyproject_toml: str = PATH_TO_PYPROJECT_TOML_FILE,
                                                    warn_before_add=True):
         rc = LocalProjectManager.migrate_requirements_to_pypoetry_toml(
             poetry_proj_conda_env_name=poetry_proj_conda_env_name,
@@ -415,7 +430,7 @@ class TestLocalProjectManager:
     #                                                   dependency_section_name):
     def test_migrate_pyproject_toml_to_pyproject_toml(self):
         poetry_proj_conda_env_name = "project_manager"
-        src_pyproject_toml = PATH_TO_TOML_FILE
+        src_pyproject_toml = PATH_TO_PYPROJECT_TOML_FILE
         dest_pyproject_toml = r"pyproject.toml"
         warn_before_add = True
         dependency_section_name = "tool.poetry.dev-dependencies"
@@ -431,7 +446,7 @@ class TestLocalProjectManager:
 
     def test_create_conda_env_for_existing_pyproject_toml(self, common_ps_commands, conda_env_manager,
                                                           local_project_manager):
-        rc = local_project_manager.create_conda_env_for_existing_pyproject_toml(PATH_TO_TOML_FILE)
+        rc = local_project_manager.create_conda_env_for_existing_pyproject_toml(PATH_TO_PYPROJECT_TOML_FILE)
         assert rc == 0
 
 
