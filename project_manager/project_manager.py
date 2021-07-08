@@ -1030,7 +1030,7 @@ class CommonPSCommands:
         return path_to_loaded_module
 
     @staticmethod
-    def read_toml(path_to_toml, start_line="tool.poetry.dependencies") -> Dict[str,str]:
+    def read_toml(path_to_toml, start_line="tool.poetry.dependencies",verbose:bool=False) -> Dict[str,str]:
         """
         Reads for toml file using open context manager in order to reduce 3rd party toml parser deps
 
@@ -1054,7 +1054,8 @@ class CommonPSCommands:
                 if is_section:
                     all_dicts.append(cur_dict)
                 elif not is_section:
-                    print(cur_line)
+                    if verbose:
+                        print(cur_line)
                     if cur_line:
                         key, *value = cur_line.split(
                             "="
