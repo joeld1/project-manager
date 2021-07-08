@@ -540,18 +540,98 @@ class PoetryProjectManager:
 
         """
         # TODO: Remove redundant add methods
+        dependency = PoetryProjectManager.wrap_dep_in_quotes(dependency, wrap_in_quotes=wrap_in_quotes)
+        poetry_cmd = PoetryProjectManager.create_poetry_cmd_for_dep(dependency, options=options, method="add")
+        rc = PoetryProjectManager.execute_poetry_cmd(
+            poetry_cmd, dir_containing_pyproject_toml, poetry_proj_conda_env_name
+        )
+        return rc
+
+    @staticmethod
+    def create_poetry_cmd_for_dep(dependency: str, options=None, method: str = "add"):
+        if options:
+            poetry_cmd = f"poetry {method} {options} {dependency}"
+        else:
+            poetry_cmd = f"poetry {method} {dependency}"
+        return poetry_cmd
+
+    @staticmethod
+    def wrap_dep_in_quotes(dependency: str, wrap_in_quotes: bool = False):
         has_quote = '"' in dependency
         has_dash = "-" in dependency
         must_wrap = (not has_quote) and has_dash
         if wrap_in_quotes or must_wrap:
             dependency = f'"{dependency}"'  # wrap in quotes
-        poetry_cmd = f"poetry add {dependency}"
-        if options:
-            poetry_cmd = f"poetry add {dependency} {options}"
+        return dependency
+
+    @staticmethod
+    def remove_dependency_from_pyproject_toml(
+            dir_containing_pyproject_toml: str,
+            poetry_proj_conda_env_name: str,
+            dependency: str,
+            wrap_in_quotes: bool = False,
+            options: str = "",
+    ):
+        """
+
+
+        :param dir_containing_pyproject_toml:
+        :type dir_containing_pyproject_toml: str
+        :param poetry_proj_conda_env_name:
+        :type poetry_proj_conda_env_name: str
+        :param dependency:
+        :type dependency: str
+        :param wrap_in_quotes:  (Default value = False)
+        :type wrap_in_quotes: bool
+        :param options:  (Default value = "")
+        :type options: str
+
+        """
+        # TODO: Remove redundant add methods
+        dependency = PoetryProjectManager.wrap_dep_in_quotes(dependency, wrap_in_quotes=wrap_in_quotes)
+        poetry_cmd = PoetryProjectManager.create_poetry_cmd_for_dep(dependency, options=options, method="remove")
         rc = PoetryProjectManager.execute_poetry_cmd(
             poetry_cmd, dir_containing_pyproject_toml, poetry_proj_conda_env_name
         )
         return rc
+
+    @staticmethod
+    def poetry_remove(options_and_packages_str: str, dir_containing_pyproject_toml: str,
+                      poetry_proj_conda_env_name: str):
+        """
+
+        Equivalent to poetry remove {...} where everything found within the brackets is what you want to remove (options_and_packages_str)
+
+        :param dir_containing_pyproject_toml: command to execute with poetry remove
+        :type dir_containing_pyproject_toml: str
+        :param poetry_proj_conda_env_name:
+        :type poetry_proj_conda_env_name: str
+        :param options_and_packages_str:
+        :type options_and_packages_str: str
+        """
+        poetry_cmd = PoetryProjectManager.create_poetry_cmd_for_dep(options_and_packages_str, method="remove")
+        rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, dir_containing_pyproject_toml, poetry_proj_conda_env_name)
+        return rc
+
+    @staticmethod
+    def poetry_add(options_and_packages_str: str, dir_containing_pyproject_toml: str,
+                      poetry_proj_conda_env_name: str):
+        """
+
+        Equivalent to poetry add {...} where everything found within the brackets is what you want to add (options_and_packages_str)
+
+        :param dir_containing_pyproject_toml: command to execute with poetry add
+        :type dir_containing_pyproject_toml: str
+        :param poetry_proj_conda_env_name:
+        :type poetry_proj_conda_env_name: str
+        :param options_and_packages_str:
+        :type options_and_packages_str: str
+        """
+        poetry_cmd = PoetryProjectManager.create_poetry_cmd_for_dep(options_and_packages_str, method="add")
+        rc = PoetryProjectManager.execute_poetry_cmd(poetry_cmd, dir_containing_pyproject_toml, poetry_proj_conda_env_name)
+        return rc
+
+
 
     @staticmethod
     def clear_poetry_cache(poetry_proj_conda_env_name: str):
@@ -868,7 +948,6 @@ class PoetryProjectManager:
         except Exception as e:
             raise e
 
-
     @staticmethod
     def get_poetry_proj_env_name_from_poetry_toml_for_py_file(
             poetry_proj_py_filepath: str,
@@ -1060,7 +1139,7 @@ class CommonPSCommands:
         return path_to_loaded_module
 
     @staticmethod
-    def read_toml(path_to_toml, start_line="tool.poetry.dependencies",verbose:bool=False) -> Dict[str,str]:
+    def read_toml(path_to_toml, start_line="tool.poetry.dependencies", verbose: bool = False) -> Dict[str, str]:
         """
         Reads for toml file using open context manager in order to reduce 3rd party toml parser deps
 
@@ -1299,7 +1378,7 @@ class CondaEnvManager:
         return kernel_config
 
     @staticmethod
-    def verify_if_kernel_config_contains_env_path(env_name:str, kernel_config:Dict[str,Any]) -> bool:
+    def verify_if_kernel_config_contains_env_path(env_name: str, kernel_config: Dict[str, Any]) -> bool:
         """
 
         This method determines if the conda_env_name == ipykernel name and returns True or False
@@ -1313,7 +1392,7 @@ class CondaEnvManager:
         if argv:
             path_to_py = Path(argv[0])
             try:
-                assert (env_name in path_to_py.parts) and (kernel_config.get('display_name','')==env_name)
+                assert (env_name in path_to_py.parts) and (kernel_config.get('display_name', '') == env_name)
                 return True
             except Exception as e:
                 print(e)
@@ -1324,7 +1403,7 @@ class CondaEnvManager:
             return False
 
     @staticmethod
-    def verify_kernel_pairing(env_name:str):
+    def verify_kernel_pairing(env_name: str):
         """
 
         This determines if the ipykernel name matches the conda env name.
