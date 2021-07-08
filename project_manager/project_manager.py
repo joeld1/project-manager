@@ -9,7 +9,7 @@ from functools import reduce
 from os import PathLike
 from pathlib import Path, PosixPath
 from subprocess import Popen
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
 
 def import_optional_dependency(object_name: str):
@@ -130,7 +130,7 @@ class PoetryProjectManager:
     """ """
 
     @staticmethod
-    def search_for_toml_files(filepath: str, toml_pattern: str) -> PosixPath:
+    def search_for_toml_files(filepath: str, toml_pattern: str) -> Path:
         """
 
 
@@ -138,7 +138,7 @@ class PoetryProjectManager:
         :type filepath: str
         :param toml_pattern:
         :type toml_pattern: str
-        :rtype: PosixPath
+        :rtype: Path
 
         """
         cur_path = Path(filepath)
@@ -835,7 +835,7 @@ class PoetryProjectManager:
         :rtype: Path
 
         """
-        virtualenvs_path = CommonPSCommands.read_toml(cur_poetry_file, "virtualenv")
+        virtualenvs_path = CommonPSCommands.read_toml(path_to_toml=cur_poetry_file, start_line="virtualenvs")
         path_to_env = Path(virtualenvs_path["path"])
         return path_to_env
 
@@ -1030,7 +1030,7 @@ class CommonPSCommands:
         return path_to_loaded_module
 
     @staticmethod
-    def read_toml(path_to_toml, start_line="tool.poetry.dependencies"):
+    def read_toml(path_to_toml, start_line="tool.poetry.dependencies") -> Dict[str,str]:
         """
         Reads for toml file using open context manager in order to reduce 3rd party toml parser deps
 
