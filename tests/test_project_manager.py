@@ -207,7 +207,12 @@ class TestPoetryProjectManager:
 
 class TestCommonPSCommands:
     def test_run_command(self):
-        assert False
+        cmd = 'source /opt/homebrew/anaconda3/etc/profile.d/conda.sh && conda activate allrepos && poetry remove -D "notebook" -D "ipykernel" -D "pre-commit" -D "pytest"'
+        kwargs = {'text': True,
+                  'shell': True,
+                  'cwd': '/Users/jd/Dropbox/Python Scripts/test-dir'}
+        rc = CommonPSCommands.run_command(cmd, **kwargs)
+
 
     def test_chain_and_execute_commands(self):
         assert False
