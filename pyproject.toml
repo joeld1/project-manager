@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "project_manager"
-version = "0.0.1.dev62+d8872eb"
+version = "0.0.0.post63.dev0+eed4ce6"
 description = ""
 authors = ["JD <10216562+joeld1@users.noreply.github.com>"]
 readme = "README.md"
@@ -8,8 +8,6 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 gy = "*"
-poetry-core = "^1.0.3"
-poetry-dynamic-versioning = "^0.17.1"
 pytest = {version = "^6.2.4", optional = true}
 pytest-cov = {version = "^2.12.1", optional = true}
 autoflake = {version = "^1.4", optional = true}
@@ -18,6 +16,8 @@ mypy = {version = "^0.910", optional = true}
 isort = {version = "^5.9.1", optional = true}
 pre-commit = {version = "^2.13.0", optional = true}
 black = {version = "^21.6-beta.0", optional = true}
+poetry-dynamic-versioning = {version = "^0.17.1", optional = true}
+poetry-core = "^1.0.8"
 
 
 [tool.poetry.dev-dependencies]
@@ -29,13 +29,13 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.extras]
 dev_tools = ["pytest","pytest-cov","autoflake","flake8","mypy","isort","pre-commit","black","poetry-dynamic-versioning"]
 
-[tool.poetry-dynamic-versioning]
-enable = true
-vcs = "git"
-pattern = "commit"
-bump = true
-
-[tool.poetry-dynamic-versioning.substitution]
-enable = true
-vcs = "git"
-pattern = "commit"
+#[tool.poetry-dynamic-versioning]
+#enable = true
+#vcs = "git"
+#pattern = "commit"
+#bump = true
+#
+#[tool.poetry-dynamic-versioning.substitution]
+#enable = true
+#vcs = "git"
+#pattern = "commit"
