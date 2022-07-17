@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "project_manager"
-version = "0.0.1.dev61+506d4bb"
+version = "0.0.1.dev62+d8872eb"
 description = ""
 authors = ["JD <10216562+joeld1@users.noreply.github.com>"]
 readme = "README.md"
@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.10"
 gy = "*"
 poetry-core = "^1.0.3"
+poetry-dynamic-versioning = "^0.17.1"
 pytest = {version = "^6.2.4", optional = true}
 pytest-cov = {version = "^2.12.1", optional = true}
 autoflake = {version = "^1.4", optional = true}
@@ -17,7 +18,7 @@ mypy = {version = "^0.910", optional = true}
 isort = {version = "^5.9.1", optional = true}
 pre-commit = {version = "^2.13.0", optional = true}
 black = {version = "^21.6-beta.0", optional = true}
-poetry-dynamic-versioning = {version = "^0.17.1", optional = true}
+
 
 [tool.poetry.dev-dependencies]
 
