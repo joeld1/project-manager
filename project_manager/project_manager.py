@@ -2380,4 +2380,6 @@ if __name__ == "__main__":
     # env_name = "hello_world"
     # python_version = "3.9"
     # rc = LocalProjectManager.init_current_dir_as_a_poetry_conda_project(env_name, python_version)
+    clean_env_name = "py39"
+    rc = CondaEnvManager.init_prev_made_conda_env(clean_env_name)
     sys.exit()

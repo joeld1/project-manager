@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "project_manager"
-version = "0.0.1.dev58+d9bf5c9"
+version = "0.0.1.dev60+9358e7b"
 description = ""
 authors = ["JD <10216562+joeld1@users.noreply.github.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-gy = "^1.0.2"
+python = "^3.10"
+gy = "*"
 poetry-core = "^1.0.3"
 pytest = {version = "^6.2.4", optional = true}
 pytest-cov = {version = "^2.12.1", optional = true}
