@@ -17,7 +17,7 @@ isort = {version = "^5.9.1", optional = true}
 pre-commit = {version = "^2.13.0", optional = true}
 black = {version = "^21.6-beta.0", optional = true}
 poetry-dynamic-versioning = {version = "^0.17.1", optional = true}
-poetry-core = "^1.0.8"
+#poetry-core = "^1.0.8"
 
 
 [tool.poetry.dev-dependencies]
